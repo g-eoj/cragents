@@ -18,7 +18,7 @@ Doing so can:
 
 ## How
 
-`cragents` provides a utility to constrain `pydantic-ai` [agents](https://ai.pydantic.dev/agents/). 
+`cragents` provides a utility to constrain `pydantic-ai` [agents](https://ai.pydantic.dev/agents/), if [vLLM](https://docs.vllm.ai/en/stable/) is used to serve the agent's model.
 It will limit the number of paragraphs and the number of sentences per paragraph in reasoning output.
 The limits are configurable.
 
@@ -55,7 +55,12 @@ for message in run.all_messages():
 
 ```sh
 ThinkingPart(content='\nOkay, the user said "Hi".\n', id='content', provider_name='openai')
+```
 
+For the above example, vLLM was run on a single RTX 4090:
+
+```sh
+uv run vllm serve "Qwen/Qwen3-VL-8B-Thinking-FP8" --gpu-memory-utilization 0.92 --api-key $VLLM_API_KEY --enable-auto-tool-choice --tool-call-parser hermes --max-model-len 40000 --guided-decoding-backend guidance
 ```
 
 ### Limitations
