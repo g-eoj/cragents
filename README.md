@@ -1,6 +1,6 @@
 # `cragents`
 
-**C**onstrained **R**easoning **Agents** limit reasoning output.
+**C**onstrain **R**easoning **Agents** to limit reasoning output.
 
 ## Why
 
@@ -21,32 +21,27 @@ Doing so can:
 `cragents` provides tools for `pydantic-ai` [agents](https://ai.pydantic.dev/agents/) that will limit the number of paragraphs and the number of sentences per paragraph in reasoning output.
 The limits are configurable.
 
-
 ```py
 import cragents
 from pydantic_ai import Agent
 
+# define an agent as you normally would
 agent = Agent(
   ...
 )
 
+# constrain reasoning as appropriate
 await cragents.constrain_reasoning(
   agent,
   reasoning_paragraph_limit=1,
   reasoning_sentence_limit=8,
 )
 
+# call the agent as you normally would
 run = await agent.run(...)
 ```
-
 
 ### Limitations
 
 - Only models that use the `<think></think>` tokens to denote reasoning will work
 - vLLM must be started without a reasoning parser (`pydantic-ai` will still extract reasoning content correctly)
-
-
-
-
-
-
