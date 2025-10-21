@@ -18,7 +18,8 @@ Doing so can:
 
 ## How
 
-`cragents` provides tools for `pydantic-ai` [agents](https://ai.pydantic.dev/agents/) that will limit the number of paragraphs and the number of sentences per paragraph in reasoning output.
+`cragents` provides a utility to constrain `pydantic-ai` [agents](https://ai.pydantic.dev/agents/). 
+It will limit the number of paragraphs and the number of sentences per paragraph in reasoning output.
 The limits are configurable.
 
 ```py
@@ -34,14 +35,31 @@ agent = Agent(
 await cragents.constrain_reasoning(
   agent,
   reasoning_paragraph_limit=1,
-  reasoning_sentence_limit=8,
+  reasoning_sentence_limit=1,
 )
 
 # call the agent as you normally would
-run = await agent.run(...)
+run = await agent.run("Hi")
+```
+
+Inspecting the `ThinkingPart`s shows that output is constrained.
+
+```py
+from pydantic_ai.messages import ThinkingPart
+
+for message in run.all_messages():
+    for part in message.parts:
+        if isinstance(part, ThinkingPart):
+            print(part)
+```
+
+```sh
+ThinkingPart(content='\nOkay, the user said "Hi".\n', id='content', provider_name='openai')
+
 ```
 
 ### Limitations
 
 - Only models that use the `<think></think>` tokens to denote reasoning will work
+- Only models that use the `<tool_call></tool_call>` tokens to denote tool calls will work
 - vLLM must be started without a reasoning parser (`pydantic-ai` will still extract reasoning content correctly)
