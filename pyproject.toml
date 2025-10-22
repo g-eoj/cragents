@@ -17,7 +17,6 @@ version = { attr = "cragents._version.__version__" }
 
 [dependency-groups]
 lint = [
-    "mypy>=1.18.2",
     "pyright>=1.1.406",
     "ruff>=0.14.1",
 ]
@@ -61,6 +60,7 @@ extend-select = [
     "D",
     "TID251",
 ]
+flake8-quotes = { inline-quotes = "single", multiline-quotes = "double" }
 mccabe = { max-complexity = 15 }
 ignore = [
     "D100", # ignore missing docstring in module

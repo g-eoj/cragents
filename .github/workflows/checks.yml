@@ -37,17 +37,3 @@ jobs:
 
       - run: uv build --all-packages
       - run: ls -lh dist/
-
-  mypy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-
-      - name: Install dependencies
-        run: uv sync --no-dev --group lint
-
-      - run: make typecheck-mypy
