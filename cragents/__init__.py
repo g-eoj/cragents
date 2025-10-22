@@ -23,10 +23,11 @@ from cragents._utils import (
     get_toolset_schemas,
     make_guided_extra_body,
 )
+from cragents._version import __version__
 
 
 __all__ = (
-    #"__version__",
+    "__version__",
     "constrain_reasoning",
 )
 

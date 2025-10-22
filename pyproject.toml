@@ -1,9 +1,16 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "cragents"
-version = "0.0.1"
-description = "Constrain reasoning output."
+description = "Limit reasoning output."
+dynamic = ["version"]
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "pydantic-ai>=1.2.1",
 ]
+
+[tool.setuptools.dynamic]
+version = { attr = "cragents._version.__version__" }
