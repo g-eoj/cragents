@@ -13,8 +13,10 @@
 # limitations under the License.
 
 
-from pydantic_ai import Agent
-from pydantic_ai.models.openai import OpenAIChatModelSettings
+from typing import Any
+
+from pydantic_ai import Agent, RunContext, RunUsage
+from pydantic_ai.models.openai import OpenAIChatModel, OpenAIChatModelSettings
 from pydantic_ai.profiles.openai import OpenAIModelProfile
 
 from cragents._utils import (
@@ -35,6 +37,7 @@ async def constrain_reasoning(
     agent: Agent,
     reasoning_paragraph_limit: int,
     reasoning_sentence_limit: int,
+    deps: Any | None = None,
 ):
     """Limit the number of paragraphs and the number of sentences per paragraph in reasoning output.
 
@@ -42,6 +45,7 @@ async def constrain_reasoning(
         agent: a Pydantic AI agent
         reasoning_paragraph_limit: upper bound on the number of paragraphs allowed
         reasoning_sentence_limit: upper bound on the number of sentences allowed per paragraph
+        deps: dependencies for Pydantic AI dependency injection system
     """
     agent.model.profile = OpenAIModelProfile(  # pyright: ignore[reportAttributeAccessIssue, reportOptionalMemberAccess]
         openai_supports_strict_tool_definition=False,
@@ -50,9 +54,12 @@ async def constrain_reasoning(
         supports_json_schema_output=True,
     )
 
+    model: OpenAIChatModel = agent.model  # pyright: ignore[reportAssignmentType]
+    ctx = RunContext(deps=deps, model=model, usage=RunUsage())
+
     toolsets_schemas: list[JsonSchema] = []
     for toolset in agent.toolsets:
-        toolset_schema = await get_toolset_schemas(toolset)
+        toolset_schema = await get_toolset_schemas(ctx, toolset)
         # schema can be empty so we need this check
         if toolset_schema:
             toolsets_schemas += toolset_schema

@@ -16,8 +16,7 @@
 import json
 from typing import Any
 
-from pydantic_ai import RunContext, RunUsage
-from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai import RunContext
 from pydantic_ai.profiles import JsonSchemaTransformer
 from pydantic_ai.toolsets import AbstractToolset
 
@@ -33,12 +32,7 @@ class InlineDefJsonSchemaTransformer(JsonSchemaTransformer):
         return schema
 
 
-async def get_toolset_schemas(toolset: AbstractToolset) -> list[JsonSchema]:
-    ctx = RunContext(
-        deps=None,
-        model=OpenAIChatModel("_"),
-        usage=RunUsage(),
-    )
+async def get_toolset_schemas(ctx: RunContext, toolset: AbstractToolset) -> list[JsonSchema]:
     schemas: list[JsonSchema] = []
     tools = await toolset.get_tools(ctx)
     for name, tool in tools.items():
