@@ -57,12 +57,12 @@ async def constrain_reasoning(
     model: OpenAIChatModel = agent.model  # pyright: ignore[reportAssignmentType]
     ctx = RunContext(deps=deps, model=model, usage=RunUsage())
 
-    json_schema = build_json_schema(agent._output_schema)  # pyright: ignore[report]
+    json_schema = build_json_schema(agent._output_schema)  # pyright: ignore[reportPrivateUsage]
 
     toolsets_schemas: list[JsonSchema] = []
     for toolset in agent.toolsets:
         toolset_schema = await get_toolset_schemas(ctx, toolset)
-        # schema can be empty so we need this checkj:
+        # schema can be empty so we need this check
         if toolset_schema:
             toolsets_schemas += toolset_schema
 

@@ -17,7 +17,7 @@ import json
 from typing import Any
 
 from pydantic import TypeAdapter
-from pydantic_ai import BinaryImage, DeferredToolRequests, RunContext, _output, _utils
+from pydantic_ai import BinaryImage, DeferredToolRequests, RunContext, _output, _utils, output
 from pydantic_ai.profiles import JsonSchemaTransformer
 from pydantic_ai.toolsets import AbstractToolset
 
@@ -42,7 +42,7 @@ async def get_toolset_schemas(ctx: RunContext, toolset: AbstractToolset) -> list
     return schemas
 
 
-def build_json_schema(output_schema: _output.OutputSchema) -> JsonSchema:
+def build_json_schema(output_schema: _output.OutputSchema[output.OutputDataT]) -> JsonSchema:
     # allow any output with {'type': 'string'} if no constraints
     if not any(
         [
