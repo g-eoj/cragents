@@ -20,8 +20,8 @@ from pydantic_ai.models.openai import OpenAIChatModel, OpenAIChatModelSettings
 from pydantic_ai.profiles.openai import OpenAIModelProfile
 
 from cragents._utils import (
-    InlineDefJsonSchemaTransformer,
     JsonSchema,
+    build_json_schema,
     get_toolset_schemas,
     make_guided_extra_body,
 )
@@ -57,23 +57,20 @@ async def constrain_reasoning(
     model: OpenAIChatModel = agent.model  # pyright: ignore[reportAssignmentType]
     ctx = RunContext(deps=deps, model=model, usage=RunUsage())
 
+    json_schema = build_json_schema(agent._output_schema)  # pyright: ignore[report]
+
     toolsets_schemas: list[JsonSchema] = []
     for toolset in agent.toolsets:
         toolset_schema = await get_toolset_schemas(ctx, toolset)
-        # schema can be empty so we need this check
+        # schema can be empty so we need this checkj:
         if toolset_schema:
             toolsets_schemas += toolset_schema
 
-    output_types_schemas: list[JsonSchema] = []
-    if agent._output_toolset is not None:  # pyright: ignore[reportPrivateUsage]
-        for tool_def in agent._output_toolset._tool_defs:  # pyright: ignore[reportPrivateUsage]
-            schema = tool_def.parameters_json_schema
-            schema["title"] = tool_def.name
-            schema = InlineDefJsonSchemaTransformer(schema).walk()
-            output_types_schemas.append(schema)
-
-    # needs fix for default output type
-    final_schema = {"anyOf": toolsets_schemas + output_types_schemas}
+    if toolsets_schemas:
+        if "anyOf" in json_schema:
+            json_schema["anyOf"] = toolsets_schemas + json_schema["anyOf"]
+        else:
+            json_schema = {"anyOf": toolsets_schemas + [json_schema]}
 
     if agent.model_settings is None:
         agent.model_settings = OpenAIChatModelSettings()
@@ -81,7 +78,7 @@ async def constrain_reasoning(
     extra_body = agent.model_settings.get("extra_body", {})
     extra_body.update(  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType]
         make_guided_extra_body(
-            final_schema,
+            json_schema,
             reasoning_paragraph_limit=reasoning_paragraph_limit,
             reasoning_sentence_limit=reasoning_sentence_limit,
         )
