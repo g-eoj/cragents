@@ -17,29 +17,9 @@ import json
 from typing import Any
 
 from pydantic import TypeAdapter
-from pydantic_ai import BinaryImage, DeferredToolRequests, RunContext, _output, _utils, output
-from pydantic_ai.profiles import JsonSchemaTransformer
-from pydantic_ai.toolsets import AbstractToolset
+from pydantic_ai import BinaryImage, DeferredToolRequests, _output, _utils, output
 
 JsonSchema = dict[str, Any]
-
-
-class InlineDefJsonSchemaTransformer(JsonSchemaTransformer):
-    # does llguidance require inline defs?
-    def __init__(self, schema: JsonSchema, *, strict: bool | None = None):
-        super().__init__(schema, prefer_inlined_defs=True, strict=strict)
-
-    def transform(self, schema: JsonSchema) -> JsonSchema:
-        return schema
-
-
-async def get_toolset_schemas(ctx: RunContext, toolset: AbstractToolset) -> list[JsonSchema]:
-    schemas: list[JsonSchema] = []
-    tools = await toolset.get_tools(ctx)
-    for tool in tools.values():
-        schema = tool.tool_def.parameters_json_schema
-        schemas.append(schema)
-    return schemas
 
 
 def build_json_schema(output_schema: _output.OutputSchema[output.OutputDataT]) -> JsonSchema:
