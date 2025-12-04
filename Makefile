@@ -15,3 +15,9 @@ typecheck-pyright:
 
 .PHONY: typecheck
 typecheck: typecheck-pyright ## Run static type checking
+
+.PHONY: test
+test: ## Run tests and collect coverage data
+	COLUMNS=150 uv run coverage run -m pytest -n auto --dist=loadgroup --durations=20
+	uv run coverage combine
+	uv run coverage report

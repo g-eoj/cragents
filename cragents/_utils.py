@@ -16,31 +16,64 @@
 import json
 from typing import Any
 
-from pydantic_ai import RunContext
-from pydantic_ai.profiles import JsonSchemaTransformer
-from pydantic_ai.toolsets import AbstractToolset
+from pydantic import TypeAdapter
+from pydantic_ai import BinaryImage, DeferredToolRequests, _output, _utils, output
 
 JsonSchema = dict[str, Any]
 
 
-class InlineDefJsonSchemaTransformer(JsonSchemaTransformer):
-    # does llguidance require inline defs?
-    def __init__(self, schema: JsonSchema, *, strict: bool | None = None):
-        super().__init__(schema, prefer_inlined_defs=True, strict=strict)
+def build_json_schema(output_schema: _output.OutputSchema[output.OutputDataT]) -> JsonSchema:
+    # allow any output with {'type': 'string'} if no constraints
+    if not any(
+        [
+            output_schema.allows_deferred_tools,
+            output_schema.allows_image,
+            output_schema.object_def,
+            output_schema.toolset,
+        ]
+    ):
+        return TypeAdapter(str).json_schema()
 
-    def transform(self, schema: JsonSchema) -> JsonSchema:
-        return schema
+    json_schemas: list[JsonSchema] = []
 
+    processor = getattr(output_schema, "processor", None)
+    if isinstance(processor, _output.ObjectOutputProcessor):
+        json_schema = processor.object_def.json_schema
+        json_schemas.append(json_schema)
 
-async def get_toolset_schemas(ctx: RunContext, toolset: AbstractToolset) -> list[JsonSchema]:
-    schemas: list[JsonSchema] = []
-    tools = await toolset.get_tools(ctx)
-    for name, tool in tools.items():
-        schema = tool.tool_def.parameters_json_schema
-        schema = InlineDefJsonSchemaTransformer(schema).walk()
-        schema["title"] = name
-        schemas.append(schema)
-    return schemas
+    elif output_schema.toolset:
+        if output_schema.allows_text:
+            json_schema = TypeAdapter(str).json_schema()
+            json_schemas.append(json_schema)
+        for tool_processor in output_schema.toolset.processors.values():
+            json_schema = tool_processor.object_def.json_schema
+            if json_schema not in json_schemas:
+                json_schemas.append(json_schema)
+
+    elif output_schema.allows_text:
+        json_schema = TypeAdapter(str).json_schema()
+        json_schemas.append(json_schema)
+
+    if output_schema.allows_deferred_tools:
+        json_schema = TypeAdapter(DeferredToolRequests).json_schema(mode="serialization")
+        if json_schema not in json_schemas:
+            json_schemas.append(json_schema)
+
+    if output_schema.allows_image:
+        json_schema = TypeAdapter(BinaryImage).json_schema()
+        json_schema = {k: v for k, v in json_schema["properties"].items() if k in ["data", "media_type"]}
+        if json_schema not in json_schemas:
+            json_schemas.append(json_schema)
+
+    if len(json_schemas) == 1:
+        return json_schemas[0]
+
+    json_schemas, all_defs = _utils.merge_json_schema_defs(json_schemas)
+    json_schema: JsonSchema = {"anyOf": json_schemas}
+    if all_defs:
+        json_schema["$defs"] = all_defs
+
+    return json_schema
 
 
 def make_guided_extra_body(
@@ -55,7 +88,7 @@ def make_guided_extra_body(
         f'sentence[lazy]: /[^\\.\\n]+/ (".")\n'
         'tool_call: "{\\"name\\": \\"" FUNCTION_NAME "\\", \\"arguments\\": " tool_schema "}\\n"\n'
         "tool_schema: %json " + json.dumps(schema) + "\n"
-        "FUNCTION_NAME: /[a-zA-Z_]+/\n"
+        "FUNCTION_NAME: /[a-zA-Z0-9_]+/\n"
         "NL: /\\n/\n"
         'Q: /"/\n'
     )

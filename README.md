@@ -23,19 +23,10 @@ It will limit the number of paragraphs and the number of sentences per paragraph
 The limits are configurable.
 
 ```py
-import cragents
 import os
-from pydantic import BaseModel
-from pydantic_ai import Agent
+from cragents import CRAgent, vllm_model_profile
 from pydantic_ai.models.openai import OpenAIChatModel, OpenAIChatModelSettings
 from pydantic_ai.providers.openai import OpenAIProvider
-
-
-# define an agent as you normally would
-class Output(BaseModel):
-    answer: str
-    reason: str
-
 
 model = OpenAIChatModel(
     model_name=os.environ["VLLM_MODEL_NAME"],
@@ -43,24 +34,14 @@ model = OpenAIChatModel(
         api_key=os.environ["VLLM_API_KEY"],
         base_url=os.environ["VLLM_BASE_URL"],
     ),
+    profile=vllm_model_profile,
     settings=OpenAIChatModelSettings(
         max_tokens=1000,
     ),
 )
 
-agent = Agent(
-    model=model,
-    output_type=[Output],
-)
-
-# constrain reasoning as appropriate
-await cragents.constrain_reasoning(
-    agent,
-    reasoning_paragraph_limit=1,
-    reasoning_sentence_limit=1,
-)
-
-# call the agent as you normally would
+agent = CRAgent(model)
+await agent.constrain_reasoning(reasoning_paragraph_limit=1, reasoning_sentence_limit=1)
 run = await agent.run("Hi")
 ```
 
