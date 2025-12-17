@@ -13,13 +13,48 @@
 # limitations under the License.
 
 
+import dataclasses
 import json
+import re
 from typing import Any
 
 from pydantic import TypeAdapter
 from pydantic_ai import BinaryImage, DeferredToolRequests, _output, _utils, output
 
 JsonSchema = dict[str, Any]
+
+
+@dataclasses.dataclass
+class Anchor:
+    text: str
+
+
+@dataclasses.dataclass
+class Block:
+    max_newlines: int
+    max_char_captures: int
+    chars_to_capture: str = "."
+
+
+@dataclasses.dataclass
+class Free:
+    pass
+
+
+@dataclasses.dataclass
+class Think:
+    guide: list[Anchor | Block | Free]
+    start_token: str = "<think>"
+    stop_token: str = "</think>"
+
+
+@dataclasses.dataclass
+class Tools:
+    json_schema: JsonSchema | None = None
+    tool_name_regex: str = "/[a-zA-Z0-9_]+/"
+    tool_names: list[str] | None = None
+    start_token: str = "<tool_call>"
+    stop_token: str = "</tool_call>"
 
 
 def build_json_schema(output_schema: _output.OutputSchema[output.OutputDataT]) -> JsonSchema:
@@ -76,27 +111,68 @@ def build_json_schema(output_schema: _output.OutputSchema[output.OutputDataT]) -
     return json_schema
 
 
-def make_guided_extra_body(
-    schema: JsonSchema,
-    reasoning_paragraph_limit: int,
-    reasoning_sentence_limit: int,
-):
-    guide = (
-        f"start: <think> reason </think> <tool_call> tool_call </tool_call>\n"
-        f"reason: paragraph{{1,{int(reasoning_paragraph_limit)}}}\n"
-        f"paragraph: NL sentence{{1,{int(reasoning_sentence_limit)}}} NL\n"
-        f'sentence[lazy]: /[^\\.\\n]+/ (".")\n'
-        'tool_call: "{\\"name\\": \\"" FUNCTION_NAME "\\", \\"arguments\\": " tool_schema "}\\n"\n'
-        "tool_schema: %json " + json.dumps(schema) + "\n"
-        "FUNCTION_NAME: /[a-zA-Z0-9_]+/\n"
-        "NL: /\\n/\n"
-        'Q: /"/\n'
-    )
+def build_grammar(guide: list[Free | Think | Tools]) -> str:
+    start_def = "start: "
+    custom_defs: list[str] = []
+    default_defs = [
+        "FREE: /.*/",
+        "NL: /\\n/",
+        'Q: /"/',
+    ]
+
+    for x in guide:
+        if isinstance(x, Think):
+            start_def += f"{x.start_token} NL "
+
+            for i, y in enumerate(x.guide):
+                if isinstance(y, Anchor):
+                    start_def += f'"{y.text}" '
+
+                if isinstance(y, Block):
+                    block_uid = f"block_{i}"
+                    p_uid = f"p_{i}"
+                    s_uid = f"s_{i}"
+
+                    start_def += f"{block_uid} "
+
+                    custom_defs.append(f"{block_uid}: {p_uid}{{1,{y.max_newlines}}}")
+                    custom_defs.append(f"{p_uid}: {s_uid}{{1,{y.max_char_captures}}} NL NL")
+                    custom_defs.append(
+                        f'{s_uid}[lazy]: /[^{re.escape(y.chars_to_capture)}\\n]+/ ("{y.chars_to_capture}")'
+                    )
+
+                if isinstance(y, Free):
+                    start_def += "FREE "
+
+            start_def += f"{x.stop_token} "
+
+        if isinstance(x, Tools):
+            start_def += f"{x.start_token} tool_call {x.stop_token}"
+
+            custom_defs.append(
+                'tool_call: "{\\"name\\": \\"" FUNCTION_NAME "\\", \\"arguments\\": " tool_schema "}\\n"'
+            )
+            custom_defs.append("tool_schema: %json " + json.dumps(x.json_schema))
+            if not x.tool_names:
+                custom_defs.append(f"FUNCTION_NAME: {x.tool_name_regex}")
+            else:
+                tool_names = [f'"{tool_name}"' for tool_name in x.tool_names]
+                custom_defs.append(f"FUNCTION_NAME: ({' | '.join(tool_names)})")
+
+        if isinstance(x, Free):
+            start_def += "FREE "
+
+    grammar = "\n".join([start_def] + custom_defs + default_defs)
+    return grammar
+
+
+def make_guided_extra_body(guide: list[Free | Think | Tools]) -> dict[str, Any]:
+    grammar = build_grammar(guide)
     extra_body = {
         "chat_template_kwargs": {
             "add_generation_prompt": False,
             "enable_thinking": False,
         },
-        "guided_grammar": guide,
+        "guided_grammar": grammar,
     }
     return extra_body
