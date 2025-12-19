@@ -14,6 +14,7 @@
 
 
 import copy
+from collections.abc import Sequence
 
 from pydantic_ai import Agent, RunContext, RunUsage
 from pydantic_ai.models.openai import OpenAIChatModel, OpenAIChatModelSettings
@@ -22,19 +23,22 @@ from pydantic_ai.profiles.openai import OpenAIModelProfile
 from pydantic_ai.tools import AgentDepsT
 from pydantic_ai.toolsets import AbstractToolset
 
-from cragents._utils import (
+from cragents._types import (
     Anchor,
-    Block,
+    Constrain,
     Free,
+    GenerationSequenceElement,
     JsonSchema,
     Think,
-    Tools,
+    UseTools,
+)
+from cragents._utils import (
     build_json_schema,
     make_guided_extra_body,
 )
 from cragents._version import __version__
 
-__all__ = ("__version__", "CRAgent", "Anchor", "Block", "Free", "Think", "Tools", "vllm_model_profile")
+__all__ = ("__version__", "CRAgent", "Anchor", "Constrain", "Free", "Think", "UseTools", "vllm_model_profile")
 
 
 vllm_model_profile = OpenAIModelProfile(
@@ -46,7 +50,7 @@ vllm_model_profile = OpenAIModelProfile(
 
 
 class CRAgent(Agent[AgentDepsT, OutputDataT]):
-    """Pydantic AI Agent with one extra method: `constrain_reasoning`."""
+    """Pydantic AI Agent with one extra method: `guide`."""
 
     async def _build_toolset_json_schemas(
         self, ctx: RunContext[AgentDepsT], toolset: AbstractToolset[AgentDepsT]
@@ -58,24 +62,24 @@ class CRAgent(Agent[AgentDepsT, OutputDataT]):
             schemas.append(schema)
         return schemas
 
-    async def constrain(
+    async def guide(
         self,
-        guide: list[Free | Think | Tools],
+        generation_sequence: Sequence[GenerationSequenceElement],
         deps: AgentDepsT = None,
     ) -> None:
-        """Limit the number of paragraphs and the number of sentences per paragraph in reasoning output.
+        """Tell the model to follow a sequence of constraints on its output.
 
         Args:
-            guide: ...
-            deps: dependencies for Pydantic AI dependency injection system
+            generation_sequence: a sequence of elements that influence model output
+            deps: dependencies for Pydantic AI dependency injection system, can change tool calls
         """
         if not isinstance(self.model, OpenAIChatModel):
             raise RuntimeError("OpenAIChatModel required.")
 
-        processed_guide: list[Free | Think | Tools] = []
-        for x in guide:
-            x = copy.copy(x)
-            if isinstance(x, Tools) and x.json_schema is None:
+        processed_gen_seq: Sequence[GenerationSequenceElement] = []
+        for element in generation_sequence:
+            element = copy.copy(element)
+            if isinstance(element, UseTools) and element.json_schema is None:
                 return_schema = build_json_schema(self._output_schema)
 
                 toolsets_schemas: list[JsonSchema] = []
@@ -93,10 +97,10 @@ class CRAgent(Agent[AgentDepsT, OutputDataT]):
                         json_schema = {"anyOf": toolsets_schemas + [return_schema]}
                 else:
                     json_schema = return_schema
-                x.json_schema = json_schema
-            processed_guide.append(x)
+                element.json_schema = json_schema
+            processed_gen_seq.append(element)
 
-        extra_body = make_guided_extra_body(processed_guide)
+        extra_body = make_guided_extra_body(processed_gen_seq)
 
         if self.model_settings is None:
             self.model_settings = OpenAIChatModelSettings()

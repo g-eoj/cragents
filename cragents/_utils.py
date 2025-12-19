@@ -13,48 +13,22 @@
 # limitations under the License.
 
 
-import dataclasses
 import json
 import re
-from typing import Any
+from collections.abc import Sequence
 
 from pydantic import TypeAdapter
 from pydantic_ai import BinaryImage, DeferredToolRequests, _output, _utils, output
 
-JsonSchema = dict[str, Any]
-
-
-@dataclasses.dataclass
-class Anchor:
-    text: str
-
-
-@dataclasses.dataclass
-class Block:
-    max_newlines: int
-    max_char_captures: int
-    chars_to_capture: str = "."
-
-
-@dataclasses.dataclass
-class Free:
-    pass
-
-
-@dataclasses.dataclass
-class Think:
-    guide: list[Anchor | Block | Free]
-    start_token: str = "<think>"
-    stop_token: str = "</think>"
-
-
-@dataclasses.dataclass
-class Tools:
-    json_schema: JsonSchema | None = None
-    tool_name_regex: str = "/[a-zA-Z0-9_]+/"
-    tool_names: list[str] | None = None
-    start_token: str = "<tool_call>"
-    stop_token: str = "</tool_call>"
+from ._types import (
+    Anchor,
+    Constrain,
+    Free,
+    GenerationSequenceElement,
+    JsonSchema,
+    Think,
+    UseTools,
+)
 
 
 def build_json_schema(output_schema: _output.OutputSchema[output.OutputDataT]) -> JsonSchema:
@@ -111,63 +85,83 @@ def build_json_schema(output_schema: _output.OutputSchema[output.OutputDataT]) -
     return json_schema
 
 
-def build_grammar(guide: list[Free | Think | Tools]) -> str:
+def build_grammar(generation_sequence: Sequence[GenerationSequenceElement]) -> str:
     start_def = "start: "
     custom_defs: list[str] = []
     default_defs = [
         "FREE: /.*/",
         "NL: /\\n/",
-        'Q: /"/',
     ]
 
-    for x in guide:
-        if isinstance(x, Think):
-            start_def += f"{x.start_token} NL "
+    uid = 0
+    for element in generation_sequence:
+        if isinstance(element, Anchor):
+            start_def += f'"{element.text}" '
 
-            for i, y in enumerate(x.guide):
-                if isinstance(y, Anchor):
-                    start_def += f'"{y.text}" '
+        if isinstance(element, Constrain):
+            uid += 1
+            block_uid = f"block_{uid}"
+            p_uid = f"p_{uid}"
+            s_uid = f"s_{uid}"
 
-                if isinstance(y, Block):
-                    block_uid = f"block_{i}"
-                    p_uid = f"p_{i}"
-                    s_uid = f"s_{i}"
+            start_def += f"{block_uid} "
+
+            custom_defs.append(f"{block_uid}: {p_uid}{{1,{element.max_newlines}}}")
+            custom_defs.append(f"{p_uid}: {s_uid}{{1,{element.max_char_captures}}} NL NL")
+            custom_defs.append(
+                f'{s_uid}[lazy]: /[^{re.escape(element.chars_to_capture)}\\n]+/ ("{element.chars_to_capture}")'
+            )
+
+        if isinstance(element, Free):
+            start_def += "FREE "
+
+        if isinstance(element, Think):
+            start_def += f"{element.start_token} NL "
+
+            for think_element in element.sequence:
+                if isinstance(think_element, Anchor):
+                    start_def += f'"{think_element.text}" '
+
+                if isinstance(think_element, Constrain):
+                    uid += 1
+                    block_uid = f"block_{uid}"
+                    p_uid = f"p_{uid}"
+                    s_uid = f"s_{uid}"
 
                     start_def += f"{block_uid} "
 
-                    custom_defs.append(f"{block_uid}: {p_uid}{{1,{y.max_newlines}}}")
-                    custom_defs.append(f"{p_uid}: {s_uid}{{1,{y.max_char_captures}}} NL NL")
+                    custom_defs.append(f"{block_uid}: {p_uid}{{1,{think_element.max_newlines}}}")
+                    custom_defs.append(f"{p_uid}: {s_uid}{{1,{think_element.max_char_captures}}} NL NL")
                     custom_defs.append(
-                        f'{s_uid}[lazy]: /[^{re.escape(y.chars_to_capture)}\\n]+/ ("{y.chars_to_capture}")'
+                        f'{s_uid}[lazy]: /[^{re.escape(think_element.chars_to_capture)}\\n]+/ ("{think_element.chars_to_capture}")'
                     )
 
-                if isinstance(y, Free):
+                if isinstance(think_element, Free):
                     start_def += "FREE "
 
-            start_def += f"{x.stop_token} "
+            start_def += f"{element.stop_token} "
 
-        if isinstance(x, Tools):
-            start_def += f"{x.start_token} tool_call {x.stop_token}"
+        if isinstance(element, UseTools):
+            start_def += f"{element.start_token} tool_call {element.stop_token}"
 
             custom_defs.append(
                 'tool_call: "{\\"name\\": \\"" FUNCTION_NAME "\\", \\"arguments\\": " tool_schema "}\\n"'
             )
-            custom_defs.append("tool_schema: %json " + json.dumps(x.json_schema))
-            if not x.tool_names:
-                custom_defs.append(f"FUNCTION_NAME: {x.tool_name_regex}")
+            custom_defs.append("tool_schema: %json " + json.dumps(element.json_schema))
+            if not element.tool_names:
+                custom_defs.append(f"FUNCTION_NAME: {element.tool_name_regex}")
             else:
-                tool_names = [f'"{tool_name}"' for tool_name in x.tool_names]
+                tool_names = [f'"{tool_name}"' for tool_name in element.tool_names]
                 custom_defs.append(f"FUNCTION_NAME: ({' | '.join(tool_names)})")
-
-        if isinstance(x, Free):
-            start_def += "FREE "
 
     grammar = "\n".join([start_def] + custom_defs + default_defs)
     return grammar
 
 
-def make_guided_extra_body(guide: list[Free | Think | Tools]) -> dict[str, Any]:
-    grammar = build_grammar(guide)
+def make_guided_extra_body(
+    generation_sequence: Sequence[GenerationSequenceElement],
+) -> JsonSchema:
+    grammar = build_grammar(generation_sequence)
     extra_body = {
         "chat_template_kwargs": {
             "add_generation_prompt": False,
