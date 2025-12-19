@@ -106,11 +106,10 @@ def build_grammar(generation_sequence: Sequence[GenerationSequenceElement]) -> s
 
             start_def += f"{block_uid} "
 
+            capture = " | ".join([f'"{x}"' for x in element.chars_to_capture])
             custom_defs.append(f"{block_uid}: {p_uid}{{1,{element.max_newlines}}}")
             custom_defs.append(f"{p_uid}: {s_uid}{{1,{element.max_char_captures}}} NL NL")
-            custom_defs.append(
-                f'{s_uid}[lazy]: /[^{re.escape(element.chars_to_capture)}\\n]+/ ("{element.chars_to_capture}")'
-            )
+            custom_defs.append(f"{s_uid}[lazy]: /[^{re.escape(element.chars_to_capture)}\\n]+/ ( {capture} )")
 
         if isinstance(element, Free):
             start_def += "FREE "
@@ -130,16 +129,17 @@ def build_grammar(generation_sequence: Sequence[GenerationSequenceElement]) -> s
 
                     start_def += f"{block_uid} "
 
+                    capture = " | ".join([f'"{x}"' for x in think_element.chars_to_capture])
                     custom_defs.append(f"{block_uid}: {p_uid}{{1,{think_element.max_newlines}}}")
                     custom_defs.append(f"{p_uid}: {s_uid}{{1,{think_element.max_char_captures}}} NL NL")
                     custom_defs.append(
-                        f'{s_uid}[lazy]: /[^{re.escape(think_element.chars_to_capture)}\\n]+/ ("{think_element.chars_to_capture}")'
+                        f"{s_uid}[lazy]: /[^{re.escape(think_element.chars_to_capture)}\\n]+/ ( {capture} )"
                     )
 
                 if isinstance(think_element, Free):
                     start_def += "FREE "
 
-            start_def += f"{element.stop_token} NL "
+            start_def += f"{element.stop_token} "
 
         if isinstance(element, UseTools):
             start_def += f"{element.start_token} tool_call {element.stop_token}"

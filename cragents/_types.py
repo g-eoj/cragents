@@ -48,7 +48,11 @@ class Constrain:
 
 @dataclasses.dataclass
 class Free:
-    """Allow the model to generate anything."""
+    """Allow the model to generate anything.
+
+    WARNING: There is no guarantee free generation will stop and the model will
+    continue to the next element in the generation sequence.
+    """
 
     pass
 
