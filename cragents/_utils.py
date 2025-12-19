@@ -89,7 +89,7 @@ def build_grammar(generation_sequence: Sequence[GenerationSequenceElement]) -> s
     start_def = "start: "
     custom_defs: list[str] = []
     default_defs = [
-        "FREE: /.*/",
+        "FREE: /[\\S\\s]*/",
         "NL: /\\n/",
     ]
 
@@ -139,7 +139,7 @@ def build_grammar(generation_sequence: Sequence[GenerationSequenceElement]) -> s
                 if isinstance(think_element, Free):
                     start_def += "FREE "
 
-            start_def += f"{element.stop_token} "
+            start_def += f"{element.stop_token} NL "
 
         if isinstance(element, UseTools):
             start_def += f"{element.start_token} tool_call {element.stop_token}"
@@ -167,6 +167,6 @@ def make_guided_extra_body(
             "add_generation_prompt": False,
             "enable_thinking": False,
         },
-        "guided_grammar": grammar,
+        "structured_outputs": {"grammar": grammar},
     }
     return extra_body

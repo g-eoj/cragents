@@ -31,8 +31,9 @@ async def test_default_agent_output():
         {
             "extra_body": {
                 "chat_template_kwargs": {"add_generation_prompt": False, "enable_thinking": False},
-                "guided_grammar": """\
-start: <think> NL "I think " block_1 "Therefore " FREE </think> "Response: " block_2 FREE <tool_call> tool_call </tool_call>
+                "structured_outputs": {
+                    "grammar": """\
+start: <think> NL "I think " block_1 "Therefore " FREE </think> NL "Response: " block_2 FREE <tool_call> tool_call </tool_call>
 block_1: p_1{1,1}
 p_1: s_1{1,2} NL NL
 s_1[lazy]: /[^\\.\\n]+/ (".")
@@ -42,9 +43,10 @@ s_2[lazy]: /[^\\.\\n]+/ (".")
 tool_call: "{\\"name\\": \\"" FUNCTION_NAME "\\", \\"arguments\\": " tool_schema "}\\n"
 tool_schema: %json {"type": "string"}
 FUNCTION_NAME: /[a-zA-Z0-9_]+/
-FREE: /.*/
+FREE: /[\\S\\s]*/
 NL: /\\n/\
-""",
+"""
+                },
             }
         }
     )
@@ -57,8 +59,9 @@ async def test_deduplicate_output_type():
         {
             "extra_body": {
                 "chat_template_kwargs": {"add_generation_prompt": False, "enable_thinking": False},
-                "guided_grammar": """\
-start: <think> NL "I think " block_1 "Therefore " FREE </think> "Response: " block_2 FREE <tool_call> tool_call </tool_call>
+                "structured_outputs": {
+                    "grammar": """\
+start: <think> NL "I think " block_1 "Therefore " FREE </think> NL "Response: " block_2 FREE <tool_call> tool_call </tool_call>
 block_1: p_1{1,1}
 p_1: s_1{1,2} NL NL
 s_1[lazy]: /[^\\.\\n]+/ (".")
@@ -68,9 +71,10 @@ s_2[lazy]: /[^\\.\\n]+/ (".")
 tool_call: "{\\"name\\": \\"" FUNCTION_NAME "\\", \\"arguments\\": " tool_schema "}\\n"
 tool_schema: %json {"properties": {"response": {"type": "boolean"}}, "required": ["response"], "type": "object"}
 FUNCTION_NAME: /[a-zA-Z0-9_]+/
-FREE: /.*/
+FREE: /[\\S\\s]*/
 NL: /\\n/\
-""",
+"""
+                },
             }
         }
     )
@@ -83,8 +87,9 @@ async def test_multiple_tool_outputs():
         {
             "extra_body": {
                 "chat_template_kwargs": {"add_generation_prompt": False, "enable_thinking": False},
-                "guided_grammar": """\
-start: <think> NL "I think " block_1 "Therefore " FREE </think> "Response: " block_2 FREE <tool_call> tool_call </tool_call>
+                "structured_outputs": {
+                    "grammar": """\
+start: <think> NL "I think " block_1 "Therefore " FREE </think> NL "Response: " block_2 FREE <tool_call> tool_call </tool_call>
 block_1: p_1{1,1}
 p_1: s_1{1,2} NL NL
 s_1[lazy]: /[^\\.\\n]+/ (".")
@@ -94,9 +99,10 @@ s_2[lazy]: /[^\\.\\n]+/ (".")
 tool_call: "{\\"name\\": \\"" FUNCTION_NAME "\\", \\"arguments\\": " tool_schema "}\\n"
 tool_schema: %json {"anyOf": [{"properties": {"response": {"type": "boolean"}}, "required": ["response"], "type": "object"}, {"properties": {"response": {"type": "integer"}}, "required": ["response"], "type": "object"}]}
 FUNCTION_NAME: /[a-zA-Z0-9_]+/
-FREE: /.*/
+FREE: /[\\S\\s]*/
 NL: /\\n/\
-""",
+"""
+                },
             }
         }
     )
@@ -109,8 +115,9 @@ async def test_mixed_output_type():
         {
             "extra_body": {
                 "chat_template_kwargs": {"add_generation_prompt": False, "enable_thinking": False},
-                "guided_grammar": """\
-start: <think> NL "I think " block_1 "Therefore " FREE </think> "Response: " block_2 FREE <tool_call> tool_call </tool_call>
+                "structured_outputs": {
+                    "grammar": """\
+start: <think> NL "I think " block_1 "Therefore " FREE </think> NL "Response: " block_2 FREE <tool_call> tool_call </tool_call>
 block_1: p_1{1,1}
 p_1: s_1{1,2} NL NL
 s_1[lazy]: /[^\\.\\n]+/ (".")
@@ -120,9 +127,10 @@ s_2[lazy]: /[^\\.\\n]+/ (".")
 tool_call: "{\\"name\\": \\"" FUNCTION_NAME "\\", \\"arguments\\": " tool_schema "}\\n"
 tool_schema: %json {"anyOf": [{"type": "string"}, {"properties": {"response": {"type": "boolean"}}, "required": ["response"], "type": "object"}]}
 FUNCTION_NAME: /[a-zA-Z0-9_]+/
-FREE: /.*/
+FREE: /[\\S\\s]*/
 NL: /\\n/\
-""",
+"""
+                },
             }
         }
     )
