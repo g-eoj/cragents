@@ -81,7 +81,7 @@ def make_guided_extra_body(
     reasoning_paragraph_limit: int,
     reasoning_sentence_limit: int,
 ):
-    guide = (
+    grammar = (
         f"start: <think> reason </think> <tool_call> tool_call </tool_call>\n"
         f"reason: paragraph{{1,{int(reasoning_paragraph_limit)}}}\n"
         f"paragraph: NL sentence{{1,{int(reasoning_sentence_limit)}}} NL\n"
@@ -97,6 +97,6 @@ def make_guided_extra_body(
             "add_generation_prompt": False,
             "enable_thinking": False,
         },
-        "guided_grammar": guide,
+        "structured_outputs": {"grammar": grammar},
     }
     return extra_body
