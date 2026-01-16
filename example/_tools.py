@@ -67,7 +67,7 @@ async def get_md(path: str) -> str:
         for frame in page.frames:
             try:
                 # force at most 100 pages to load
-                for _ in range(100):
+                for _ in range(20):
                     await frame.page.keyboard.press("n")
                     await page.wait_for_timeout(30)
                 # try loading the pdf viewer

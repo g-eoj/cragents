@@ -22,7 +22,7 @@ from rich.console import Console
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["TRANSFORMERS_VERBOSITY"] = "error"
 
-from graph import RouterNode, State, graph
+from graph import RouterNode, State, agent_graph
 
 
 async def main():
@@ -30,10 +30,9 @@ async def main():
     parser.add_argument("-q", "--query")
     args = parser.parse_args()
     console = Console()
-    async with graph.iter(RouterNode(), state=State(task=args.query)) as run:
+    async with agent_graph.iter(RouterNode(stimuli=args.query), state=State(task=args.query)) as run:
         async for node in run:
             console.print(f"\n{node}")
-        console.print(f"\n{run.result.output}")
 
 if __name__ == "__main__":
     asyncio.run(main())

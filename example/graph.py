@@ -18,6 +18,7 @@ from __future__ import annotations
 import os
 import re
 from dataclasses import dataclass, field
+from datetime import datetime
 
 import logfire
 from cragents import CRAgent, vllm_model_profile
@@ -97,7 +98,7 @@ class RouterNode(BaseNode[State]):
             reasoning_sentence_limit=8,
         )
         run = await router_agent.run(
-            self.stimuli or ctx.state.task,
+            f"{self.stimuli or ctx.state.task}\n<current_datetime>{datetime.now()}</current_datetime>",
             message_history=ctx.state.messages,
         )
         ctx.state.messages += run.new_messages()
@@ -125,18 +126,16 @@ class RouterNode(BaseNode[State]):
                 f"Review the original task: {ctx.state.task}\n\n"
                 f"Review the message history and this final answer: {format_as_xml(potential_final_answer)}"
             )
-            run = await approval_agent.run(
+            approval_run = await approval_agent.run(
                 instructions,
                 message_history=ctx.state.messages,
             )
             ctx.state.messages += run.new_messages()
-            if run.output.answer_accepted or ctx.state.answer_trys > 3:
+            if approval_run.output.answer_accepted or ctx.state.answer_trys > 3:
                 potential_final_answer.references = list(set(ctx.state.references))
                 return End(potential_final_answer)
 
-            return RouterNode(stimuli=format_as_xml(run.output))
-
-        return RouterNode(stimuli="What happened?")
+            return RouterNode(stimuli=format_as_xml(approval_run.output))
 
 
 @dataclass
@@ -234,4 +233,4 @@ class ResearchNode(BaseNode[State, None, str]):
         return RouterNode(stimuli=ctx.state.research_queries[self.research_query.query])
 
 
-graph = Graph(nodes=[RouterNode, CoderNode, ResearchNode])
+agent_graph = Graph(nodes=[RouterNode, CoderNode, ResearchNode])
