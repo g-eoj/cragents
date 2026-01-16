@@ -7,7 +7,7 @@
 > And I'm thinking While I'm thinking... (Crackerman, Stone Temple Pilots, 1992)
 
 Reasoning models use a lot of tokens for their reasoning output.
-This is resource intensive while not necessarily improving accuracy - have you ever seen a reasoning model talk itself out of the right answer?
+This is resource intensive while not necessarily improving accuracy.
 So it may be desirable to limit the tokens used.
 Doing so can:
 
@@ -63,7 +63,7 @@ ThinkingPart(content='\nOkay, the user said "Hi".\n', id='content', provider_nam
 For the above example, vLLM was run on a single RTX 4090:
 
 ```sh
-uv run vllm serve "Qwen/Qwen3-VL-8B-Thinking-FP8" --gpu-memory-utilization 0.92 --api-key $VLLM_API_KEY --enable-auto-tool-choice --tool-call-parser hermes --max-model-len 40000 --guided-decoding-backend guidance
+uv run vllm serve "Qwen/Qwen3-VL-8B-Thinking-FP8" --gpu-memory-utilization 0.92 --api-key $VLLM_API_KEY --enable-auto-tool-choice --tool-call-parser hermes --max-model-len 40000
 ```
 
 ### Limitations
