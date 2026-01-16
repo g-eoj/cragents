@@ -1,6 +1,6 @@
 # Agent Example
 
-A basic question/answer agent.
+A basic question/answer agent for use with reasoning models.
 
 ## Features
 
@@ -17,26 +17,26 @@ A basic question/answer agent.
 
 ## Quick Start
 
-Set environment variables:
+Set environment variables in two terminals:
 
-- `HF_TOKEN`
-- `SERPER_API_TOKEN`
-- `VLLM_API_KEY`
-- `VLLM_BASE_URL`
+- `HF_TOKEN` (optional, depending on model choice)
+- `SERPER_API_TOKEN` (get from [serper](https://serper.dev))
+- `VLLM_API_KEY` (set to anything, can't be empty)
+- `VLLM_BASE_URL` (`http://localhost:8000/v1`)
 - `VLLM_MODEL_NAME` (`Qwen/Qwen3-VL-8B-Thinking-FP8` recommended)
 
-Prepare virtual environment:
+*Terminal 1* - Launch vLLM with:
+```sh
+uv run --with vllm==0.13 vllm serve $VLLM_MODEL_NAME --gpu-memory-utilization 0.92 --api-key $VLLM_API_KEY --enable-auto-tool-choice --tool-call-parser hermes --max-model-len 38000
+```
+
+*Terminal 2* - Prepare virtual environment:
 ```sh
 uv sync --group example
 uv run playwright install firefox
 ```
 
-Launch vLLM with:
-```sh
-uv run --with vllm==0.13 vllm serve $VLLM_MODEL_NAME --gpu-memory-utilization 0.92 --api-key $VLLM_API_KEY --enable-auto-tool-choice --tool-call-parser hermes --max-model-len 38000
-```
-
-Submit a query to the agent:
+*Terminal 2* - Submit a query to the agent:
 ```sh
 uv run python agent.py --query "Who did the Warriors play last night?"
 ```
