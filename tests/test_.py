@@ -23,7 +23,8 @@ async def test_default_agent_output():
         {
             "extra_body": {
                 "chat_template_kwargs": {"add_generation_prompt": False, "enable_thinking": False},
-                "guided_grammar": """\
+                "structured_outputs": {
+                    "grammar": """\
 start: <think> reason </think> <tool_call> tool_call </tool_call>
 reason: paragraph{1,1}
 paragraph: NL sentence{1,2} NL
@@ -33,7 +34,8 @@ tool_schema: %json {"type": "string"}
 FUNCTION_NAME: /[a-zA-Z0-9_]+/
 NL: /\\n/
 Q: /"/
-""",
+"""
+                },
             }
         }
     )
@@ -46,7 +48,8 @@ async def test_deduplicate_output_type():
         {
             "extra_body": {
                 "chat_template_kwargs": {"add_generation_prompt": False, "enable_thinking": False},
-                "guided_grammar": """\
+                "structured_outputs": {
+                    "grammar": """\
 start: <think> reason </think> <tool_call> tool_call </tool_call>
 reason: paragraph{1,1}
 paragraph: NL sentence{1,2} NL
@@ -56,7 +59,8 @@ tool_schema: %json {"properties": {"response": {"type": "boolean"}}, "required":
 FUNCTION_NAME: /[a-zA-Z0-9_]+/
 NL: /\\n/
 Q: /"/
-""",
+"""
+                },
             }
         }
     )
@@ -69,7 +73,8 @@ async def test_multiple_tool_outputs():
         {
             "extra_body": {
                 "chat_template_kwargs": {"add_generation_prompt": False, "enable_thinking": False},
-                "guided_grammar": """\
+                "structured_outputs": {
+                    "grammar": """\
 start: <think> reason </think> <tool_call> tool_call </tool_call>
 reason: paragraph{1,1}
 paragraph: NL sentence{1,2} NL
@@ -79,7 +84,8 @@ tool_schema: %json {"anyOf": [{"properties": {"response": {"type": "boolean"}}, 
 FUNCTION_NAME: /[a-zA-Z0-9_]+/
 NL: /\\n/
 Q: /"/
-""",
+"""
+                },
             }
         }
     )
@@ -92,7 +98,8 @@ async def test_mixed_output_type():
         {
             "extra_body": {
                 "chat_template_kwargs": {"add_generation_prompt": False, "enable_thinking": False},
-                "guided_grammar": """\
+                "structured_outputs": {
+                    "grammar": """\
 start: <think> reason </think> <tool_call> tool_call </tool_call>
 reason: paragraph{1,1}
 paragraph: NL sentence{1,2} NL
@@ -102,7 +109,8 @@ tool_schema: %json {"anyOf": [{"type": "string"}, {"properties": {"response": {"
 FUNCTION_NAME: /[a-zA-Z0-9_]+/
 NL: /\\n/
 Q: /"/
-""",
+"""
+                },
             }
         }
     )
