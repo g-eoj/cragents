@@ -73,33 +73,19 @@ class SearchResult(BaseModel):
     snippet: str | None
 
 
-class SearchResults(BaseModel):
-    """Results of a search."""
-
-    results: list[SearchResult]
-
-
-class URLSelection(BaseModel):
-    """URL to read."""
-
-    url: str
-
-
 class PaperSearchResult(SearchResult):
     """A paper that may be useful."""
 
     publication_info: str
 
 
-class PaperSearchResults(BaseModel):
-    """Academic paper search results."""
+class SearchResults(BaseModel):
+    """Results of a search."""
 
-    search_query: str
-    results: list[PaperSearchResult] = Field()
+    results: list[PaperSearchResult | SearchResult] = Field()
 
 
-class WebSearchResults(BaseModel):
-    """Web search results."""
+class URLSelection(BaseModel):
+    """URL to read."""
 
-    search_query: str
-    results: list[SearchResult] = Field()
+    url: str

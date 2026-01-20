@@ -60,7 +60,6 @@ model = OpenAIChatModel(
     ),
     profile=vllm_model_profile,
     settings=OpenAIChatModelSettings(
-        max_tokens=8000,
         parallel_tool_calls=False,
     ),
 )
@@ -188,7 +187,7 @@ class ResearchNode(BaseNode[State, None, str]):
         if self.research_query.query in ctx.state.research_queries:
             return RouterNode(stimuli=ctx.state.research_queries[self.research_query.query])
 
-        search_results = SearchResults(results=(await search_web(query=self.research_query.query)).results)
+        search_results = await search_web(query=self.research_query.query)
         if self.research_query.include_academic_papers:
             search_results.results.extend((await search_papers(query=self.research_query.query)).results)
 

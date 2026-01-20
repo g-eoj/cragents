@@ -23,9 +23,8 @@ import markdownify
 import requests_cache
 from _types import (
     PaperSearchResult,
-    PaperSearchResults,
     SearchResult,
-    WebSearchResults,
+    SearchResults,
 )
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from playwright.async_api import async_playwright
@@ -66,10 +65,10 @@ async def get_md(path: str) -> str:
             return f"Cannot access: {path}"
         for frame in page.frames:
             try:
-                # force at most 100 pages to load
+                # force at most 20 pages to load
                 for _ in range(20):
                     await frame.page.keyboard.press("n")
-                    await page.wait_for_timeout(30)
+                    await page.wait_for_timeout(10)
                 # try loading the pdf viewer
                 content = await frame.inner_html("id=viewer", timeout=500)
             except Exception:
@@ -89,15 +88,13 @@ async def get_md(path: str) -> str:
 
 
 # tools
-async def search_web(query: str) -> WebSearchResults:
+async def search_web(query: str) -> SearchResults:
     """Search the web for links."""
-    output = WebSearchResults(search_query=query, results=[])
+    output = SearchResults(results=[])
     url = "https://google.serper.dev/search"
-    query += " -site:huggingface.co"
-    query += " -site:researchgate.net"
     result = session.post(
         url=url,
-        data={"q": query, "num": 5},
+        data={"q": query, "num": 10},
         headers={"X-API-KEY": os.getenv("SERPER_API_TOKEN")},
     )
     result.raise_for_status()
@@ -113,15 +110,13 @@ async def search_web(query: str) -> WebSearchResults:
     return output
 
 
-async def search_papers(query: str) -> PaperSearchResults:
+async def search_papers(query: str) -> SearchResults:
     """Search for academic papers."""
-    output = PaperSearchResults(search_query=query, results=[])
+    output = SearchResults(results=[])
     url = "https://google.serper.dev/scholar"
-    query += " -site:huggingface.co"
-    query += " -site:researchgate.net"
     result = session.post(
         url=url,
-        data={"q": query, "num": 5},
+        data={"q": query, "num": 10},
         headers={"X-API-KEY": os.getenv("SERPER_API_TOKEN")},
     )
     result.raise_for_status()
