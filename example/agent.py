@@ -18,6 +18,7 @@ import asyncio
 import os
 
 import logfire
+from rich import print
 from rich.pretty import pprint
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -39,6 +40,13 @@ async def main():
         async for node in run:
             print("|")
             pprint(node)
+
+    print()
+    print(node.data.answer)
+    if node.data.references:
+        print("\nReferences:")
+        for r in node.data.references:
+            print(r)
 
 if __name__ == "__main__":
     asyncio.run(main())
