@@ -42,4 +42,3 @@ uv run playwright install firefox
 ```sh
 uv run python agent.py --query "Who did the Warriors play last night?" --references_required 2
 ```
-
