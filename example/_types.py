@@ -79,12 +79,6 @@ class PaperSearchResult(SearchResult):
     publication_info: str
 
 
-class SearchResults(BaseModel):
-    """Results of a search."""
-
-    results: list[PaperSearchResult | SearchResult] = Field()
-
-
 class URLSelection(BaseModel):
     """URL to read."""
 

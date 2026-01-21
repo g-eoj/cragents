@@ -24,7 +24,6 @@ import requests_cache
 from _types import (
     PaperSearchResult,
     SearchResult,
-    SearchResults,
 )
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from playwright.async_api import async_playwright
@@ -88,9 +87,9 @@ async def get_md(path: str) -> str:
 
 
 # tools
-async def search_web(query: str) -> SearchResults:
+async def search_web(query: str) -> list[SearchResult]:
     """Search the web for links."""
-    output = SearchResults(results=[])
+    output: list[SearchResult] = []
     url = "https://google.serper.dev/search"
     result = session.post(
         url=url,
@@ -100,7 +99,7 @@ async def search_web(query: str) -> SearchResults:
     result.raise_for_status()
     result = result.json()["organic"]
     for r in result:
-        output.results.append(
+        output.append(
             SearchResult(
                 title=r["title"],
                 url=r["link"],
@@ -110,9 +109,9 @@ async def search_web(query: str) -> SearchResults:
     return output
 
 
-async def search_papers(query: str) -> SearchResults:
+async def search_papers(query: str) -> list[PaperSearchResult]:
     """Search for academic papers."""
-    output = SearchResults(results=[])
+    output: list[PaperSearchResult] = []
     url = "https://google.serper.dev/scholar"
     result = session.post(
         url=url,
@@ -126,24 +125,25 @@ async def search_papers(query: str) -> SearchResults:
         html_url = r.get("htmlUrl", None)
         link_url = r.get("link", None)
         link = pdf_url or html_url or link_url
-        output.results.append(
-            PaperSearchResult(
-                title=r["title"],
-                url=link,
-                snippet=r.get("snippet", None),
-                publication_info=r.get("publicationInfo", None),
+        if link:
+            output.append(
+                PaperSearchResult(
+                    title=r["title"],
+                    url=link,
+                    snippet=r.get("snippet", None),
+                    publication_info=r.get("publicationInfo", None),
+                )
             )
-        )
     return output
 
 
 async def read_url(query: str, url: str) -> chromadb.QueryResult:
     """Read a link or paper to answer a query."""
     max_chunks = 100
-    max_notes = 3
+    max_notes = 5
 
-    chroma_client = chromadb.EphemeralClient()
-    # chroma_client = chromadb.PersistentClient(path="./url_store")
+    #chroma_client = chromadb.EphemeralClient()
+    chroma_client = chromadb.PersistentClient(path="./url_store")
 
     url_hash = hashlib.sha256(url.encode()).hexdigest()
     url_collection = chroma_client.get_or_create_collection(
@@ -161,12 +161,12 @@ async def read_url(query: str, url: str) -> chromadb.QueryResult:
     # have we visited the url before?
     if not url_collection.count():
         # split text based on token count
-        chunk_size = 9000
+        chunk_size = 3000
         split = RecursiveCharacterTextSplitter.from_huggingface_tokenizer(
-            separators=["\n#+", "\n\n", "\n", " ", ""],
+            separators=["\n#+"],
             is_separator_regex=True,
             tokenizer=tokenizer,
-            chunk_overlap=0,  # int(chunk_size * 2 / 3),
+            chunk_overlap=int(chunk_size * 2 / 3),
             chunk_size=chunk_size,
         ).split_text
         md = await get_md(url)

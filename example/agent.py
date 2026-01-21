@@ -28,9 +28,10 @@ from graph import RouterNode, State, agent_graph
 async def main():
     parser = argparse.ArgumentParser(prog="agent")
     parser.add_argument("-q", "--query")
+    parser.add_argument("-r", "--references_required", default=1, type=int)
     args = parser.parse_args()
     console = Console()
-    async with agent_graph.iter(RouterNode(stimuli=args.query), state=State(task=args.query)) as run:
+    async with agent_graph.iter(RouterNode(), state=State(task=args.query, references_required=args.references_required)) as run:
         async for node in run:
             console.print(f"\n{node}")
 

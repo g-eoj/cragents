@@ -15,6 +15,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 from dataclasses import dataclass, field
@@ -41,15 +42,16 @@ from _types import (
     FinalAnswer,
     Note,
     NoteWithReference,
+    PaperSearchResult,
     ResearchQuery,
-    SearchResults,
+    SearchResult,
     URLSelection,
 )
 from _utils import LimitDeps
 
 
-logfire.configure(send_to_logfire=False)
-logfire.instrument_pydantic_ai()
+#logfire.configure(send_to_logfire=False)
+#logfire.instrument_pydantic_ai()
 
 
 model = OpenAIChatModel(
@@ -69,22 +71,24 @@ model = OpenAIChatModel(
 class State:
     """Graph state."""
 
+    references_required: int
     task: str
     answer_trys: int = 0
     messages: list[ModelMessage] = field(default_factory=list[ModelMessage])
     references: list[str] = field(default_factory=list[str])
-    research_queries: dict[str, str] = field(default_factory=dict[str, str])
+    research_queries: dict[str, list[NoteWithReference]] = field(default_factory=dict[str, list[NoteWithReference]])
 
 
 @dataclass
 class RouterNode(BaseNode[State]):
     """Routes task steps to tools or agents. Decides when task is complete."""
 
-    stimuli: str | None = None
+    feedback: str | None = None
 
     async def run(self, ctx: GraphRunContext[State]) -> End[FinalAnswer] | CoderNode | ResearchNode | RouterNode:
-        complexity = len(re.split(r"[\.\?\!] ", ctx.state.task)) + 1
+        complexity = len(re.split(r"[\.\?\!] ", ctx.state.task)) + 5
         router_agent = CRAgent(
+            instructions="Don't call the researcher unnecessarily. However, do call the researcher as many times as needed to collect relevant information.",
             model=model,
             output_type=[
                 ToolOutput(CoderTask, name="call_coder"),
@@ -96,8 +100,12 @@ class RouterNode(BaseNode[State]):
             reasoning_paragraph_limit=complexity,
             reasoning_sentence_limit=8,
         )
+        if self.feedback is None:
+            instructions = f"<query>{ctx.state.task}</query><current_datetime>{datetime.now()}</current_datetime>"
+        else:
+            instructions = self.feedback
         run = await router_agent.run(
-            f"{self.stimuli or ctx.state.task}\n<current_datetime>{datetime.now()}</current_datetime>",
+            instructions,
             message_history=ctx.state.messages,
         )
         ctx.state.messages += run.new_messages()
@@ -112,6 +120,7 @@ class RouterNode(BaseNode[State]):
             ctx.state.answer_trys += 1
             potential_final_answer = run.output
             approval_agent = CRAgent(
+                instructions="Make absolutely sure all requirements are met before approving an answer.",
                 model=model,
                 output_type=[
                     ToolOutput(ApprovalResponse, max_retries=1, name="make_decision"),
@@ -123,7 +132,7 @@ class RouterNode(BaseNode[State]):
             )
             instructions = (
                 f"Review the original task: {ctx.state.task}\n\n"
-                f"Review the message history and this final answer: {format_as_xml(potential_final_answer)}"
+                f"Review the message history and this final answer and decide if it was arrived at correctly: {format_as_xml(potential_final_answer)}\n\n"
             )
             approval_run = await approval_agent.run(
                 instructions,
@@ -134,7 +143,7 @@ class RouterNode(BaseNode[State]):
                 potential_final_answer.references = list(set(ctx.state.references))
                 return End(potential_final_answer)
 
-            return RouterNode(stimuli=format_as_xml(approval_run.output))
+            return RouterNode(feedback=format_as_xml(approval_run.output))
 
 
 @dataclass
@@ -174,7 +183,7 @@ class CoderNode(BaseNode[State, None, CoderTask]):
         )
         async with coder_agent:
             run = await coder_agent.run(format_as_xml(self.task), deps=deps)
-        return RouterNode(stimuli=format_as_xml(run.output))
+        return RouterNode(feedback=format_as_xml(run.output))
 
 
 @dataclass
@@ -184,52 +193,55 @@ class ResearchNode(BaseNode[State, None, str]):
     research_query: ResearchQuery
 
     async def run(self, ctx: GraphRunContext[State]) -> RouterNode | ResearchNode:
-        if self.research_query.query in ctx.state.research_queries:
-            return RouterNode(stimuli=ctx.state.research_queries[self.research_query.query])
 
-        search_results = await search_web(query=self.research_query.query)
+        query_hash = hashlib.sha256(format_as_xml(self.research_query).encode()).hexdigest()
+        if query_hash in ctx.state.research_queries:
+            return RouterNode(feedback=format_as_xml(ctx.state.research_queries[query_hash]))
+        ctx.state.research_queries[query_hash] = []
+
+        search_results: list[SearchResult | PaperSearchResult] = await search_web(query=self.research_query.query)
         if self.research_query.include_academic_papers:
-            search_results.results.extend((await search_papers(query=self.research_query.query)).results)
+            search_results.extend(await search_papers(query=self.research_query.query))
 
-        search_agent = CRAgent(
+        select_agent = CRAgent(
             model=model,
             output_type=[
                 ToolOutput(URLSelection, name="select_url", max_retries=3),
             ],
         )
-        await search_agent.constrain_reasoning(
-            reasoning_paragraph_limit=5,
-            reasoning_sentence_limit=8,
+        await select_agent.constrain_reasoning(
+            reasoning_paragraph_limit=8, reasoning_sentence_limit=8,
         )
-        run = await search_agent.run(
-            f"Select an URL from the ones below, given the query: {format_as_xml(self.research_query)}\n\n{format_as_xml(search_results)}",
-        )
-        url = run.output.url
-
-        query_documents = await read_url(query=self.research_query.query, url=url)
-        summary_documents = [(i, d) for i, d in zip(query_documents["ids"][0], query_documents["documents"][0])]
-        summary_documents.sort(key=lambda x: x[0])
-        summary = "\n\n...\n\n".join([x[1] for x in summary_documents])
 
         read_agent = CRAgent(
             model,
             output_type=[ToolOutput(Note, name="make_note")],
         )
-        await read_agent.constrain_reasoning(
-            reasoning_paragraph_limit=len(summary_documents) + 1, reasoning_sentence_limit=8
-        )
-        instructions = (
-            f"Write a note that will help answer:\n\n'{self.research_query.query}'\n\nUse these documents:\n\n{summary}"
-        )
-        run = await read_agent.run(instructions)
-        note = NoteWithReference(
-            text=run.output.text,
-            reference=url,
-        )
 
-        ctx.state.references.append(url)
-        ctx.state.research_queries[self.research_query.query] = format_as_xml(note)
-        return RouterNode(stimuli=ctx.state.research_queries[self.research_query.query])
+        for _ in range(ctx.state.references_required):
+            select_run = await select_agent.run(
+                f"Select an URL from the ones below, given the query: {format_as_xml(self.research_query)}\n\n{format_as_xml(search_results)}",
+            )
+            query_documents = await read_url(query=self.research_query.query, url=select_run.output.url)
+            summary_documents = [(i, d) for i, d in zip(query_documents["ids"][0], query_documents["documents"][0])]
+            summary_documents.sort(key=lambda x: x[0])
+            summary = "\n\n...\n\n".join([x[1] for x in summary_documents])
+
+            await read_agent.constrain_reasoning(
+                reasoning_paragraph_limit=8, reasoning_sentence_limit=8
+            )
+            read_run = await read_agent.run(
+                f"Write a note that will help answer:\n\n'{format_as_xml(self.research_query)}'\n\nUse these documents:\n\n{summary}"
+            )
+            note = NoteWithReference(
+                text=read_run.output.text,
+                reference=select_run.output.url,
+            )
+            ctx.state.references.append(note.reference)
+            ctx.state.research_queries[query_hash].append(note)
+            search_results = [sr for sr in search_results if sr.url != select_run.output.url]
+
+        return RouterNode(feedback=format_as_xml(ctx.state.research_queries[query_hash]))
 
 
 agent_graph = Graph(nodes=[RouterNode, CoderNode, ResearchNode])
