@@ -17,7 +17,8 @@ import argparse
 import asyncio
 import os
 
-from rich.console import Console
+import logfire
+from rich.pretty import pprint
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["TRANSFORMERS_VERBOSITY"] = "error"
@@ -30,10 +31,14 @@ async def main():
     parser.add_argument("-q", "--query")
     parser.add_argument("-r", "--references_required", default=1, type=int)
     args = parser.parse_args()
-    console = Console()
+
+    logfire.configure(send_to_logfire=False)
+    logfire.instrument_pydantic_ai()
+
     async with agent_graph.iter(RouterNode(), state=State(task=args.query, references_required=args.references_required)) as run:
         async for node in run:
-            console.print(f"\n{node}")
+            print("|")
+            pprint(node)
 
 if __name__ == "__main__":
     asyncio.run(main())

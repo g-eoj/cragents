@@ -21,7 +21,6 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime
 
-import logfire
 from cragents import CRAgent, vllm_model_profile
 from pydantic_ai import RunContext, ToolDefinition, ToolOutput, format_as_xml
 from pydantic_ai.mcp import MCPServerStdio
@@ -48,10 +47,6 @@ from _types import (
     URLSelection,
 )
 from _utils import LimitDeps
-
-
-#logfire.configure(send_to_logfire=False)
-#logfire.instrument_pydantic_ai()
 
 
 model = OpenAIChatModel(
