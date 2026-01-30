@@ -12,6 +12,9 @@ dependencies = [
     "pydantic-ai>=1.25.1",
 ]
 
+[tool.setuptools.packages.find]
+include = ["cragents*"]
+
 [tool.setuptools.dynamic]
 version = { attr = "cragents._version.__version__" }
 
@@ -54,7 +57,7 @@ skip = '.git*,*.svg,*.lock,*.css,*.yaml'
 check-hidden = true
 # Ignore "formatting" like **L**anguage
 ignore-regex = '\*\*[A-Z]\*\*[a-z]+\b'
-ignore-words-list = 'asend,aci'
+ignore-words-list = 'asend,aci,isTall'
 
 [tool.pyright]
 pythonVersion = "3.12"
