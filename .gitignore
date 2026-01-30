@@ -44,3 +44,4 @@ uv.lock
 
 # Website generated files
 website/index.md
+docs/
