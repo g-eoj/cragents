@@ -41,3 +41,6 @@ venv.bak/FEST
 
 # UV
 uv.lock
+
+# Website generated files
+website/index.md
