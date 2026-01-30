@@ -193,6 +193,7 @@ img {
 
 .github-link:hover {
   text-decoration: none;
+  background: transparent;
 }
 
 /* Content Sections */
@@ -237,6 +238,11 @@ main {
 
 .content-section.tall {
   justify-content: flex-start;
+}
+
+.content-section.tall .section-inner {
+  padding-top: 1rem;
+  padding-bottom: 10%;
 }
 
 .section-inner {
