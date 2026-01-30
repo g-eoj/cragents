@@ -4,6 +4,7 @@ import codeHighlight from "lume/plugins/code_highlight.ts";
 const site = lume({
   src: ".",
   dest: "../docs",
+  location: new URL("https://g-eoj.github.io/cragents/"),
 });
 
 site.use(codeHighlight());
