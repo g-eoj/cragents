@@ -48,6 +48,10 @@ ul, ol {
   margin-left: 1em;
 }
 
+li {
+  padding-bottom: 0.15em;
+}
+
 code {
   font-family: var(--font-mono);
   background: var(--color-bg-light);
