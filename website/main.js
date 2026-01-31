@@ -175,7 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Scroll/wheel handling
   let scrollAccumulator = 0;
-  const scrollThreshold = 50;
+  const scrollThreshold = 1000;
 
   function handleWheel(e) {
     if (isTransitioning) {
@@ -192,9 +192,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Allow native scroll within tall sections
       if (e.deltaY > 0 && !atBottom) {
+        scrollAccumulator = 0;
         return; // Scrolling down, not at bottom - allow native scroll
       }
       if (e.deltaY < 0 && !atTop) {
+        scrollAccumulator = 0;
         return; // Scrolling up, not at top - allow native scroll
       }
     }
