@@ -25,7 +25,7 @@ Doing so can:
 
 The `set_guide()` method accepts a sequence of elements that control model output. These primitives are reusable and composable. Sequence them in any combination to shape model output.
 
-> Note: The model will follow whatever guide you provide, but pydantic-ai may not handle all combinations correctly (e.g., tool calls inside think blocks). Use primitives outside the tested patterns at your own risk.
+> Note: The model will follow whatever guide you provide, but pydantic-ai may not handle all combinations correctly (e.g., tool calls before think blocks). Use primitives outside the tested patterns at your own risk.
 
 ### Anchor
 
