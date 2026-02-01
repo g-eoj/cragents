@@ -62,12 +62,12 @@ class CRAgent(Agent[AgentDepsT, OutputDataT]):
             schemas.append(schema)
         return schemas
 
-    async def guide(
+    async def set_guide(
         self,
         generation_sequence: Sequence[GenerationSequenceElement],
         deps: AgentDepsT = None,
     ) -> None:
-        """Tell the model to follow a sequence of constraints on its output.
+        """The agent will tell the model to follow a sequence of constraints on its output.
 
         Args:
             generation_sequence: a sequence of elements that influence model output

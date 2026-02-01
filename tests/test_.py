@@ -26,7 +26,7 @@ generation_sequence = [
 
 async def test_default_agent_output():
     agent = CRAgent(model)
-    await agent.guide(generation_sequence)
+    await agent.set_guide(generation_sequence)
     assert agent.model_settings == snapshot(
         {
             "extra_body": {
@@ -54,7 +54,7 @@ NL: /\\n/\
 
 async def test_deduplicate_output_type():
     agent = CRAgent(model, output_type=[ToolOutput(bool, name="one"), ToolOutput(bool, name="two")])
-    await agent.guide(generation_sequence)
+    await agent.set_guide(generation_sequence)
     assert agent.model_settings == snapshot(
         {
             "extra_body": {
@@ -82,7 +82,7 @@ NL: /\\n/\
 
 async def test_multiple_tool_outputs():
     agent = CRAgent(model, output_type=[ToolOutput(bool), ToolOutput(int)])
-    await agent.guide(generation_sequence)
+    await agent.set_guide(generation_sequence)
     assert agent.model_settings == snapshot(
         {
             "extra_body": {
@@ -110,7 +110,7 @@ NL: /\\n/\
 
 async def test_mixed_output_type():
     agent = CRAgent(model, output_type=[ToolOutput(bool), str])
-    await agent.guide(generation_sequence)
+    await agent.set_guide(generation_sequence)
     assert agent.model_settings == snapshot(
         {
             "extra_body": {
