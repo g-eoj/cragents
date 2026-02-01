@@ -47,13 +47,14 @@ h3 {
   margin-top: 2em;
 }
 
-ul, ol {
-  padding-left: 0.5em;
-  margin-left: 1em;
+ol, ul {
+  margin: 0;
+  padding: 0.1em 0 1em 1.2em;
 }
 
 li {
-  padding-bottom: 0.15em;
+  margin: 0;
+  padding: 0 0 0.1em;
 }
 
 code {
