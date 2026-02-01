@@ -1,0 +1,11 @@
+{
+  "tasks": {
+    "lume": "echo \"import 'lume/cli.ts'\" | deno run -A -",
+    "prebuild": "deno run -A _build.ts",
+    "build": "deno task prebuild && deno task lume",
+    "serve": "deno task prebuild && deno task lume -s"
+  },
+  "imports": {
+    "lume/": "https://deno.land/x/lume@v2.4.2/"
+  }
+}

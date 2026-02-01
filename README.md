@@ -174,4 +174,3 @@ UseTools(
 - `stop_token` - Token generated after tool calls
 
 > Note: The model will follow whatever guide you provide, but pydantic-ai may not handle all combinations correctly (e.g., tool calls inside think blocks). Use special elements outside the tested patterns at your own risk.
-
