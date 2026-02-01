@@ -7,11 +7,11 @@ Grammar-constrained Pydantic AI [agents](https://ai.pydantic.dev/agents/) that t
 > And I'm thinking While I'm thinking... (Crackerman, Stone Temple Pilots, 1992)
 
 Reasoning models use a lot of tokens for their reasoning output.
-This is resource intensive while not necessarily improving accuracy.
+This is resource-intensive while not necessarily improving accuracy.
 So it may be desirable to limit the tokens used.
 Doing so can:
 
-- Improved response speed
+- Improve response speed
 - Decrease GPU memory requirements
 - Provide more space in the context for stuff that matters
 
@@ -78,7 +78,7 @@ generation_sequence = [
 await agent.set_guide(generation_sequence)
 ```
 
-> Note: you can change the guide at any time by setting it again.
+> Note: You can change the guide at any time by setting it again.
 
 5. Use the agent as you normally would use a Pydantic AI [agent](https://ai.pydantic.dev/agents/).
 
@@ -137,22 +137,6 @@ Free()
 
 > Warning: The model decides when to stop, which may be never.
 
-### Think
-
-Wrap a sequence of primitives in reasoning tokens.
-
-```py
-Think(
-    sequence: Sequence[Anchor | Constrain | Free],
-    start_token: str = "<think>",
-    stop_token: str = "</think>"
-)
-```
-
-- `sequence` - Primitives that control the reasoning output
-- `start_token` - Token generated before the sequence
-- `stop_token` - Token generated after the sequence
-
 ### UseTools
 
 Force tool call generation.
@@ -173,4 +157,20 @@ UseTools(
 - `start_token` - Token generated before tool calls
 - `stop_token` - Token generated after tool calls
 
-> Note: The model will follow whatever guide you provide, but pydantic-ai may not handle all combinations correctly (e.g., tool calls inside think blocks). Use special elements outside the tested patterns at your own risk.
+### Think (Wrapper)
+
+Wrap a sequence of primitives in reasoning tokens.
+
+```py
+Think(
+    sequence: Sequence[Anchor | Constrain | Free],
+    start_token: str = "<think>",
+    stop_token: str = "</think>"
+)
+```
+
+- `sequence` - Primitives that control the reasoning output
+- `start_token` - Token generated before the sequence
+- `stop_token` - Token generated after the sequence
+
+> Note: The model will follow whatever guide you provide, but pydantic-ai may not handle all combinations correctly (e.g., tool calls inside think blocks). Use primitives outside the tested patterns at your own risk.
