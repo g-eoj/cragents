@@ -50,7 +50,7 @@ vllm_model_profile = OpenAIModelProfile(
 
 
 class CRAgent(Agent[AgentDepsT, OutputDataT]):
-    """Pydantic AI Agent with one extra method: `guide`."""
+    """Pydantic AI Agent with one extra method: `set_guide`."""
 
     async def _build_toolset_json_schemas(
         self, ctx: RunContext[AgentDepsT], toolset: AbstractToolset[AgentDepsT]

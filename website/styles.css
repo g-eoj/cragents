@@ -43,6 +43,10 @@ h2 {
   padding-bottom: 0.3em;
 }
 
+h3 {
+  margin-top: 2em;
+}
+
 ul, ol {
   padding-left: 0.5em;
   margin-left: 1em;

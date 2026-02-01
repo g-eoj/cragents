@@ -21,6 +21,84 @@ Doing so can:
 - The model must be served with vLLM >= 0.13
 - vLLM must be started without a reasoning parser
 
+## Primitives
+
+The `set_guide()` method accepts a sequence of elements that control model output. These primitives are reusable and composable. Sequence them in any combination to shape model output.
+
+> Note: The model will follow whatever guide you provide, but pydantic-ai may not handle all combinations correctly (e.g., tool calls inside think blocks). Use primitives outside the tested patterns at your own risk.
+
+### Anchor
+
+Force the model to generate exact text.
+
+```py
+Anchor(text: str)
+```
+
+- `text` - The exact text the model must generate
+
+### Constrain
+
+Limit text expansion. Think of a text block that expands vertically through newlines and horizontally through all other characters.
+
+```py
+Constrain(
+    max_newlines: int,
+    max_char_captures: int,
+    chars_to_capture: str = "."
+)
+```
+
+- `max_newlines` - Upper bound on newlines (vertical expansion)
+- `max_char_captures` - Upper bound on capture characters (horizontal expansion)
+- `chars_to_capture` - Characters to count for horizontal limiting (default: `"."`)
+
+### Free
+
+Allow unconstrained generation.
+
+```py
+Free()
+```
+
+> Warning: The model decides when to stop, which may be never.
+
+### UseTools
+
+Force tool call generation.
+
+```py
+UseTools(
+    json_schema: dict | None = None,
+    tool_name_regex: str = "/[a-zA-Z0-9_]+/",
+    tool_names: list[str] | None = None,
+    start_token: str = "<tool_call>",
+    stop_token: str = "</tool_call>"
+)
+```
+
+- `json_schema` - Schema for allowed tool calls (auto-built from agent config if `None`)
+- `tool_name_regex` - Regex pattern for valid tool names
+- `tool_names` - Explicit list of allowed tool names
+- `start_token` - Token generated before tool calls
+- `stop_token` - Token generated after tool calls
+
+### Think (Wrapper)
+
+Wrap a sequence of primitives in reasoning tokens.
+
+```py
+Think(
+    sequence: Sequence[Anchor | Constrain | Free],
+    start_token: str = "<think>",
+    stop_token: str = "</think>"
+)
+```
+
+- `sequence` - Primitives that control the reasoning output
+- `start_token` - Token generated before the sequence
+- `stop_token` - Token generated after the sequence
+
 ## Example
 
 Guide model output with a composable generation sequence.
@@ -96,81 +174,3 @@ for message in run.all_messages():
         if isinstance(part, ThinkingPart):
             print(part.content)
 ```
-
-## Primitives
-
-The `set_guide()` method accepts a sequence of elements that control model output. These primitives are reusable and composable. Sequence them in any combination to shape model output.
-
-### Anchor
-
-Force the model to generate exact text.
-
-```py
-Anchor(text: str)
-```
-
-- `text` - The exact text the model must generate
-
-### Constrain
-
-Limit text expansion. Think of a text block that expands vertically through newlines and horizontally through all other characters.
-
-```py
-Constrain(
-    max_newlines: int,
-    max_char_captures: int,
-    chars_to_capture: str = "."
-)
-```
-
-- `max_newlines` - Upper bound on newlines (vertical expansion)
-- `max_char_captures` - Upper bound on capture characters (horizontal expansion)
-- `chars_to_capture` - Characters to count for horizontal limiting (default: `"."`)
-
-### Free
-
-Allow unconstrained generation.
-
-```py
-Free()
-```
-
-> Warning: The model decides when to stop, which may be never.
-
-### UseTools
-
-Force tool call generation.
-
-```py
-UseTools(
-    json_schema: dict | None = None,
-    tool_name_regex: str = "/[a-zA-Z0-9_]+/",
-    tool_names: list[str] | None = None,
-    start_token: str = "<tool_call>",
-    stop_token: str = "</tool_call>"
-)
-```
-
-- `json_schema` - Schema for allowed tool calls (auto-built from agent config if `None`)
-- `tool_name_regex` - Regex pattern for valid tool names
-- `tool_names` - Explicit list of allowed tool names
-- `start_token` - Token generated before tool calls
-- `stop_token` - Token generated after tool calls
-
-### Think (Wrapper)
-
-Wrap a sequence of primitives in reasoning tokens.
-
-```py
-Think(
-    sequence: Sequence[Anchor | Constrain | Free],
-    start_token: str = "<think>",
-    stop_token: str = "</think>"
-)
-```
-
-- `sequence` - Primitives that control the reasoning output
-- `start_token` - Token generated before the sequence
-- `stop_token` - Token generated after the sequence
-
-> Note: The model will follow whatever guide you provide, but pydantic-ai may not handle all combinations correctly (e.g., tool calls inside think blocks). Use primitives outside the tested patterns at your own risk.
