@@ -1,23 +1,29 @@
 # cragents
 
-Agents that constrain token generation.
+Grammar-constrained Pydantic AI [agents](https://ai.pydantic.dev/agents/) that think smarter and respond faster.
 
 ## Motivation
 
 > And I'm thinking While I'm thinking... (Crackerman, Stone Temple Pilots, 1992)
 
 Reasoning models use a lot of tokens for their reasoning output.
-This is resource intensive while not necessarily improving accuracy.
+This is resource-intensive while not necessarily improving accuracy.
 So it may be desirable to limit the tokens used.
 Doing so can:
 
-- Improved response speed
+- Improve response speed
 - Decrease GPU memory requirements
 - Provide more space in the context for stuff that matters
 
+## Requirements
+
+- Pydantic AI
+- The model must be served with vLLM >= 0.13
+- vLLM must be started without a reasoning parser
+
 ## Example
 
-Limit the number of paragraphs and the number of sentences per paragraph in reasoning output.
+Guide model output with a composable generation sequence.
 
 1. Start [vLLM](https://vllm.ai/) without a reasoning parser.
 
@@ -29,8 +35,8 @@ vllm serve $VLLM_MODEL_NAME --gpu-memory-utilization 0.92 --api-key $VLLM_API_KE
 
 ```py
 import os
-from cragents import CRAgent, vllm_model_profile
-from pydantic_ai.models.openai import OpenAIChatModel, OpenAIChatModelSettings
+from cragents import vllm_model_profile
+from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
 model = OpenAIChatModel(
@@ -43,17 +49,36 @@ model = OpenAIChatModel(
 )
 ```
 
-3. Initialize a `CRAgent` with the model.
+3. Using the model, initialize a `CRAgent` the same as you would for a Pydantic AI [agent](https://ai.pydantic.dev/agents/).
 
 ```py
-agent = CRAgent(model)
+from cragents import CRAgent
+from pydantic_ai import ToolOutput
+
+agent = CRAgent(model, output_type=[ToolOutput(bool), ToolOutput(int)])
 ```
 
-4. Set the constraints you would like to use.
+4. Define a generation sequence to guide model output.
 
 ```py
-await agent.constrain_reasoning(reasoning_paragraph_limit=1, reasoning_sentence_limit=1)
+from cragents import Anchor, Constrain, Free, Think, UseTools
+
+generation_sequence = [
+    Think(
+        [
+            Anchor("I think "),
+            Constrain(max_newlines=1, max_char_captures=1, chars_to_capture=".?!"),
+            Anchor("So I should "),
+            Free(),
+        ]
+    ),
+    UseTools(),
+]
+
+await agent.set_guide(generation_sequence)
 ```
+
+> Note: You can change the guide at any time by setting it again.
 
 5. Use the agent as you normally would use a Pydantic AI [agent](https://ai.pydantic.dev/agents/).
 
@@ -69,16 +94,83 @@ from pydantic_ai.messages import ThinkingPart
 for message in run.all_messages():
     for part in message.parts:
         if isinstance(part, ThinkingPart):
-            print(part)
+            print(part.content)
 ```
+
+## Primitives
+
+The `set_guide()` method accepts a sequence of elements that control model output. These primitives are reusable and composable. Sequence them in any combination to shape model output.
+
+### Anchor
+
+Force the model to generate exact text.
 
 ```py
-> ThinkingPart(content='\nOkay, the user said "Hi".\n', id='content', provider_name='openai')
+Anchor(text: str)
 ```
 
-## Requirements
+- `text` - The exact text the model must generate
 
-- The model must be served with vLLM
-- vLLM must be started without a reasoning parser
-- Models must use `<think></think>` tokens to denote reasoning
-- Models must use `<tool_call></tool_call>` tokens to denote tool calls
+### Constrain
+
+Limit text expansion. Think of a text block that expands vertically through newlines and horizontally through all other characters.
+
+```py
+Constrain(
+    max_newlines: int,
+    max_char_captures: int,
+    chars_to_capture: str = "."
+)
+```
+
+- `max_newlines` - Upper bound on newlines (vertical expansion)
+- `max_char_captures` - Upper bound on capture characters (horizontal expansion)
+- `chars_to_capture` - Characters to count for horizontal limiting (default: `"."`)
+
+### Free
+
+Allow unconstrained generation.
+
+```py
+Free()
+```
+
+> Warning: The model decides when to stop, which may be never.
+
+### UseTools
+
+Force tool call generation.
+
+```py
+UseTools(
+    json_schema: dict | None = None,
+    tool_name_regex: str = "/[a-zA-Z0-9_]+/",
+    tool_names: list[str] | None = None,
+    start_token: str = "<tool_call>",
+    stop_token: str = "</tool_call>"
+)
+```
+
+- `json_schema` - Schema for allowed tool calls (auto-built from agent config if `None`)
+- `tool_name_regex` - Regex pattern for valid tool names
+- `tool_names` - Explicit list of allowed tool names
+- `start_token` - Token generated before tool calls
+- `stop_token` - Token generated after tool calls
+
+### Think (Wrapper)
+
+Wrap a sequence of primitives in reasoning tokens.
+
+```py
+Think(
+    sequence: Sequence[Anchor | Constrain | Free],
+    start_token: str = "<think>",
+    stop_token: str = "</think>"
+)
+```
+
+- `sequence` - Primitives that control the reasoning output
+- `start_token` - Token generated before the sequence
+- `stop_token` - Token generated after the sequence
+
+> Note: The model will follow whatever guide you provide, but pydantic-ai may not handle all combinations correctly (e.g., tool calls inside think blocks). Use primitives outside the tested patterns at your own risk.

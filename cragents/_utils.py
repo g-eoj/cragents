@@ -14,12 +14,21 @@
 
 
 import json
-from typing import Any
+import re
+from collections.abc import Sequence
 
 from pydantic import TypeAdapter
 from pydantic_ai import BinaryImage, DeferredToolRequests, _output, _utils, output
 
-JsonSchema = dict[str, Any]
+from ._types import (
+    Anchor,
+    Constrain,
+    Free,
+    GenerationSequenceElement,
+    JsonSchema,
+    Think,
+    UseTools,
+)
 
 
 def build_json_schema(output_schema: _output.OutputSchema[output.OutputDataT]) -> JsonSchema:
@@ -76,22 +85,83 @@ def build_json_schema(output_schema: _output.OutputSchema[output.OutputDataT]) -
     return json_schema
 
 
+def build_grammar(generation_sequence: Sequence[GenerationSequenceElement]) -> str:
+    start_def = "start: "
+    custom_defs: list[str] = []
+    default_defs = [
+        "FREE: /[\\S\\s]*/",
+        "NL: /\\n/",
+    ]
+
+    uid = 0
+    for element in generation_sequence:
+        if isinstance(element, Anchor):
+            start_def += f'"{element.text}" '
+
+        if isinstance(element, Constrain):
+            uid += 1
+            block_uid = f"block_{uid}"
+            p_uid = f"p_{uid}"
+            s_uid = f"s_{uid}"
+
+            start_def += f"{block_uid} "
+
+            capture = " | ".join([f'"{x}"' for x in element.chars_to_capture])
+            custom_defs.append(f"{block_uid}: {p_uid}{{1,{element.max_newlines}}}")
+            custom_defs.append(f"{p_uid}: {s_uid}{{1,{element.max_char_captures}}} NL NL")
+            custom_defs.append(f"{s_uid}[lazy]: /[^{re.escape(element.chars_to_capture)}\\n]+/ ( {capture} )")
+
+        if isinstance(element, Free):
+            start_def += "FREE "
+
+        if isinstance(element, Think):
+            start_def += f"{element.start_token} NL "
+
+            for think_element in element.sequence:
+                if isinstance(think_element, Anchor):
+                    start_def += f'"{think_element.text}" '
+
+                if isinstance(think_element, Constrain):
+                    uid += 1
+                    block_uid = f"block_{uid}"
+                    p_uid = f"p_{uid}"
+                    s_uid = f"s_{uid}"
+
+                    start_def += f"{block_uid} "
+
+                    capture = " | ".join([f'"{x}"' for x in think_element.chars_to_capture])
+                    custom_defs.append(f"{block_uid}: {p_uid}{{1,{think_element.max_newlines}}}")
+                    custom_defs.append(f"{p_uid}: {s_uid}{{1,{think_element.max_char_captures}}} NL NL")
+                    custom_defs.append(
+                        f"{s_uid}[lazy]: /[^{re.escape(think_element.chars_to_capture)}\\n]+/ ( {capture} )"
+                    )
+
+                if isinstance(think_element, Free):
+                    start_def += "FREE "
+
+            start_def += f"{element.stop_token} "
+
+        if isinstance(element, UseTools):
+            start_def += f"{element.start_token} tool_call {element.stop_token}"
+
+            custom_defs.append(
+                'tool_call: "{\\"name\\": \\"" FUNCTION_NAME "\\", \\"arguments\\": " tool_schema "}\\n"'
+            )
+            custom_defs.append("tool_schema: %json " + json.dumps(element.json_schema))
+            if not element.tool_names:
+                custom_defs.append(f"FUNCTION_NAME: {element.tool_name_regex}")
+            else:
+                tool_names = [f'"{tool_name}"' for tool_name in element.tool_names]
+                custom_defs.append(f"FUNCTION_NAME: ({' | '.join(tool_names)})")
+
+    grammar = "\n".join([start_def] + custom_defs + default_defs)
+    return grammar
+
+
 def make_guided_extra_body(
-    schema: JsonSchema,
-    reasoning_paragraph_limit: int,
-    reasoning_sentence_limit: int,
-):
-    grammar = (
-        f"start: <think> reason </think> <tool_call> tool_call </tool_call>\n"
-        f"reason: paragraph{{1,{int(reasoning_paragraph_limit)}}}\n"
-        f"paragraph: NL sentence{{1,{int(reasoning_sentence_limit)}}} NL\n"
-        f'sentence[lazy]: /[^\\.\\n]+/ (".")\n'
-        'tool_call: "{\\"name\\": \\"" FUNCTION_NAME "\\", \\"arguments\\": " tool_schema "}\\n"\n'
-        "tool_schema: %json " + json.dumps(schema) + "\n"
-        "FUNCTION_NAME: /[a-zA-Z0-9_]+/\n"
-        "NL: /\\n/\n"
-        'Q: /"/\n'
-    )
+    generation_sequence: Sequence[GenerationSequenceElement],
+) -> JsonSchema:
+    grammar = build_grammar(generation_sequence)
     extra_body = {
         "chat_template_kwargs": {
             "add_generation_prompt": False,
