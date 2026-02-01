@@ -105,64 +105,64 @@ Guide model output with a composable generation sequence.
 
 1. Start [vLLM](https://vllm.ai/) without a reasoning parser.
 
-```sh
-vllm serve $VLLM_MODEL_NAME --gpu-memory-utilization 0.92 --api-key $VLLM_API_KEY --enable-auto-tool-choice --tool-call-parser hermes --max-model-len auto
-```
+    ```sh
+    vllm serve $VLLM_MODEL_NAME --gpu-memory-utilization 0.92 --api-key $VLLM_API_KEY --enable-auto-tool-choice --tool-call-parser hermes --max-model-len auto
+    ```
 
 2. Pass the `vllm_model_profile` to a Pydantic AI `OpenAIChatModel`.
 
-```py
-import os
-from cragents import vllm_model_profile
-from pydantic_ai.models.openai import OpenAIChatModel
-from pydantic_ai.providers.openai import OpenAIProvider
+    ```py
+    import os
+    from cragents import vllm_model_profile
+    from pydantic_ai.models.openai import OpenAIChatModel
+    from pydantic_ai.providers.openai import OpenAIProvider
 
-model = OpenAIChatModel(
-    model_name=os.environ["VLLM_MODEL_NAME"],
-    provider=OpenAIProvider(
-        api_key=os.environ["VLLM_API_KEY"],
-        base_url=os.environ["VLLM_BASE_URL"],
-    ),
-    profile=vllm_model_profile,
-)
-```
+    model = OpenAIChatModel(
+        model_name=os.environ["VLLM_MODEL_NAME"],
+        provider=OpenAIProvider(
+            api_key=os.environ["VLLM_API_KEY"],
+            base_url=os.environ["VLLM_BASE_URL"],
+        ),
+        profile=vllm_model_profile,
+    )
+    ```
 
 3. Using the model, initialize a `CRAgent` the same as you would for a Pydantic AI [agent](https://ai.pydantic.dev/agents/).
 
-```py
-from cragents import CRAgent
-from pydantic_ai import ToolOutput
+    ```py
+    from cragents import CRAgent
+    from pydantic_ai import ToolOutput
 
-agent = CRAgent(model, output_type=[ToolOutput(bool), ToolOutput(int)])
-```
+    agent = CRAgent(model, output_type=[ToolOutput(bool), ToolOutput(int)])
+    ```
 
 4. Define a generation sequence to guide model output.
 
-```py
-from cragents import Anchor, Constrain, Free, Think, UseTools
+    ```py
+    from cragents import Anchor, Constrain, Free, Think, UseTools
 
-generation_sequence = [
-    Think(
-        [
-            Anchor("I think "),
-            Constrain(max_newlines=1, max_char_captures=1, chars_to_capture=".?!"),
-            Anchor("So I should "),
-            Free(),
-        ]
-    ),
-    UseTools(),
-]
+    generation_sequence = [
+        Think(
+            [
+                Anchor("I think "),
+                Constrain(max_newlines=1, max_char_captures=1, chars_to_capture=".?!"),
+                Anchor("So I should "),
+                Free(),
+            ]
+        ),
+        UseTools(),
+    ]
 
-await agent.set_guide(generation_sequence)
-```
+    await agent.set_guide(generation_sequence)
+    ```
 
-> Note: You can change the guide at any time by setting it again.
+    > Note: You can change the guide at any time by setting it again.
 
 5. Use the agent as you normally would use a Pydantic AI [agent](https://ai.pydantic.dev/agents/).
 
-```py
-run = await agent.run("Hi")
-```
+    ```py
+    run = await agent.run("Hi")
+    ```
 
 Inspecting `ThinkingPart`s should confirm that output is constrained.
 

@@ -28,7 +28,7 @@ body {
 }
 
 h1, h2, h3, h4 {
-  margin-top: 1.5em;
+  margin-top: 2em;
   margin-bottom: 0.5em;
   font-weight: 400;
 }
@@ -230,7 +230,7 @@ main {
   justify-content: center;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 0 3% 3% 3%;
+  padding: 0 4% 3% max(3%, 3rem);
 }
 
 .content-section.active {
@@ -255,18 +255,8 @@ main {
 .section-inner {
   flex-shrink: 0;
   max-width: var(--max-width);
-  margin: 0 auto;
+  margin: -2rem auto 0;
   width: 100%;
-}
-
-@media (max-width: 768px) {
-  :root {
-    --sidebar-width: 160px;
-  }
-
-  .section-inner {
-    padding: 1.5rem 2rem 4rem;
-  }
 }
 
 @media (max-width: 600px) {
@@ -276,6 +266,10 @@ main {
 
   .sidebar {
     display: none;
+  }
+
+  .content-section {
+    padding-left: 3%;
   }
 
   .section-inner {
