@@ -26,7 +26,7 @@ jobs:
         with:
           enable-cache: true
 
-      - run: uv sync --all-extras --all-packages --group lint
+      - run: uv sync --all-packages --group lint
 
       - uses: pre-commit/action@v3.0.0
         with:
@@ -54,9 +54,9 @@ jobs:
 
       - run: mkdir .coverage
       - if: matrix.pydantic-ai-version == 'min'
-        run: uv sync --all-extras --group dev --resolution lowest-direct
+        run: uv sync --group dev --resolution lowest-direct
       - if: matrix.pydantic-ai-version == 'latest'
-        run: uv sync --all-extras --group dev --upgrade-package pydantic-ai
+        run: uv sync --group dev --upgrade-package pydantic-ai
         env:
           UV_FROZEN: "0"
       - run: make test
