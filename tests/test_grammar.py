@@ -3,7 +3,6 @@ from inline_snapshot import snapshot
 from cragents import Anchor, Constrain, Free, Think, UseTools
 from cragents._utils import build_grammar, make_guided_extra_body
 
-
 # ── build_grammar ──────────────────────────────────────────────────────────────
 
 
