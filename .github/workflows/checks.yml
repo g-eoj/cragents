@@ -26,7 +26,7 @@ jobs:
         with:
           enable-cache: true
 
-      - run: uv sync --all-extras --all-packages --group lint
+      - run: uv sync --all-packages --group lint
 
       - uses: pre-commit/action@v3.0.0
         with:
@@ -40,6 +40,11 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        pydantic-ai-version: [min, latest]
+    name: test (pydantic-ai ${{ matrix.pydantic-ai-version }})
     steps:
       - uses: actions/checkout@v4
 
@@ -48,5 +53,10 @@ jobs:
           enable-cache: true
 
       - run: mkdir .coverage
-      - run: uv sync --all-extras --group dev
-      - run: uv run coverage run -m pytest --durations=100 -n auto --dist=loadgroup
+      - if: matrix.pydantic-ai-version == 'min'
+        run: uv sync --group dev --resolution lowest-direct
+      - if: matrix.pydantic-ai-version == 'latest'
+        run: uv sync --group dev --upgrade-package pydantic-ai
+        env:
+          UV_FROZEN: "0"
+      - run: make test
