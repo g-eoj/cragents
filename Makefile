@@ -1,3 +1,7 @@
+.PHONY: install
+install: ## Install git hooks for local development
+	uv run pre-commit install
+
 .PHONY: format
 format: ## Format the code
 	uv run ruff format
