@@ -50,3 +50,5 @@ jobs:
       - run: mkdir .coverage
       - run: uv sync --all-extras --group dev
       - run: uv run coverage run -m pytest --durations=100 -n auto --dist=loadgroup
+      - run: uv run coverage combine
+      - run: uv run coverage report
