@@ -40,6 +40,11 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        pydantic-ai-version: [min, latest]
+    name: test (pydantic-ai ${{ matrix.pydantic-ai-version }})
     steps:
       - uses: actions/checkout@v4
 
@@ -48,5 +53,10 @@ jobs:
           enable-cache: true
 
       - run: mkdir .coverage
-      - run: uv sync --all-extras --group dev
+      - if: matrix.pydantic-ai-version == 'min'
+        run: uv sync --all-extras --group dev --override "pydantic-ai==1.25.1"
+      - if: matrix.pydantic-ai-version == 'latest'
+        run: uv sync --all-extras --group dev --upgrade-package pydantic-ai
+        env:
+          UV_FROZEN: "0"
       - run: make test
