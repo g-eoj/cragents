@@ -54,7 +54,7 @@ jobs:
 
       - run: mkdir .coverage
       - if: matrix.pydantic-ai-version == 'min'
-        run: uv sync --all-extras --group dev --override "pydantic-ai==1.25.1"
+        run: uv sync --all-extras --group dev --resolution lowest-direct
       - if: matrix.pydantic-ai-version == 'latest'
         run: uv sync --all-extras --group dev --upgrade-package pydantic-ai
         env:
