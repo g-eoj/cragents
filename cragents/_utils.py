@@ -154,7 +154,7 @@ def build_grammar(generation_sequence: Sequence[GenerationSequenceElement]) -> s
                 tool_names = [f'"{tool_name}"' for tool_name in element.tool_names]
                 custom_defs.append(f"FUNCTION_NAME: ({' | '.join(tool_names)})")
 
-    grammar = "\n".join([start_def] + custom_defs + default_defs)
+    grammar = "\n".join([start_def.strip()] + custom_defs + default_defs)
     return grammar
 
 

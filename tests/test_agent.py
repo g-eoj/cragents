@@ -146,29 +146,29 @@ NL: /\\n/\
 async def test_set_guide_requires_openai_model():
     agent = CRAgent(TestModel())
     with pytest.raises(RuntimeError, match="OpenAIChatModel required"):
-        await agent.set_guide([Anchor("hi ")])
+        await agent.set_guide([Anchor("hi")])
 
 
 async def test_set_guide_creates_model_settings_when_none():
     agent = CRAgent(model)
     assert agent.model_settings is None
-    await agent.set_guide([Anchor("hi ")])
+    await agent.set_guide([Anchor("hi")])
     assert agent.model_settings is not None
     assert "extra_body" in agent.model_settings
 
 
 async def test_set_guide_preserves_existing_model_settings():
     agent = CRAgent(model, model_settings=OpenAIChatModelSettings(temperature=0.5))
-    await agent.set_guide([Anchor("hi ")])
+    await agent.set_guide([Anchor("hi")])
     assert agent.model_settings["temperature"] == 0.5
     assert "extra_body" in agent.model_settings
 
 
 async def test_set_guide_overwrites_on_second_call():
     agent = CRAgent(model)
-    await agent.set_guide([Anchor("first ")])
+    await agent.set_guide([Anchor("first")])
     first_grammar = agent.model_settings["extra_body"]["structured_outputs"]["grammar"]
-    await agent.set_guide([Anchor("second ")])
+    await agent.set_guide([Anchor("second")])
     second_grammar = agent.model_settings["extra_body"]["structured_outputs"]["grammar"]
     assert first_grammar != second_grammar
     assert "second" in second_grammar
